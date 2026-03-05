@@ -10,9 +10,32 @@
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
   </div>
+  <!-- Load order: shared dependencies first, game.js last -->
+  <script src="js/sound.js"></script>
+  <script src="js/characters.js"></script>
   <script src="js/player.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/obstacles.js"></script>
+  <script src="js/ranking.js"></script>
   <script src="js/game.js"></script>
+
+  <!--
+    Firebase (optional — for online ranking):
+    1. Create a project at https://console.firebase.google.com/
+    2. Enable Realtime Database
+    3. Uncomment the lines below and fill in your config in js/ranking.js
+  -->
+  <!--
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  -->
+
+  <!--
+    Google AdSense (optional):
+    Replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID.
+  -->
+  <!--
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+  -->
 </body>
 </html>
