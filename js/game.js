@@ -247,7 +247,11 @@ class Game {
 
     if (this.state === 'playing') {
       if (hit(this.ui.soundHudRect)) { sound.toggle(); return; }
-      if (!this.player.jumping && !this.player.sliding) this._doJump();
+      if (!this.player.jumping && !this.player.sliding) {
+        // Left half → left, right half → right
+        this.selectedSide = cx < CANVAS_W / 2 ? 'left' : 'right';
+        this._doJump();
+      }
     }
   }
 
@@ -382,10 +386,17 @@ class Game {
     const next = this.bolts[this.currentBoltIdx + 1];
     if (!cur || !next) return;
 
-    const hasCrow = this.obstacles.crowOnSide(next.side, cur.worldY);
+    // Direction mismatch penalty
+    if (this.selectedSide !== next.side) {
+      this.timeLeft = Math.max(0.05, this.timeLeft - 0.3);
+      this._notify('方向ミス！ -0.3s', '#ff8800', CANVAS_W/2, CANVAS_H*0.38);
+      sound.crowPenalty();
+    }
+
+    const hasCrow = this.obstacles.crowOnSide(next.side, next.worldY);
     if (hasCrow) {
       this.timeLeft = Math.max(0.05, this.timeLeft - 0.3);
-      this._notify('カラス！ -0.3s', '#ff4400', CANVAS_W/2, CANVAS_H*0.38);
+      this._notify('カラス！ -0.3s', '#ff4400', CANVAS_W/2, CANVAS_H*0.44);
       sound.crowPenalty();
     }
 
@@ -480,8 +491,10 @@ class Game {
     const justLanded = wasJumping && !this.player.jumping && !this.player.sliding;
 
     if (justLanded) {
-      const cur = this.bolts[this.currentBoltIdx];
-      if (cur) this.obstacles.trySpawnCrow(cur.worldY, this.heightM, this.currentBoltIdx);
+      const cur   = this.bolts[this.currentBoltIdx];
+      const ahead = this.bolts[this.currentBoltIdx + 1];
+      // Spawn crow at the NEXT bolt's height so it visually blocks the upcoming jump target
+      if (cur && ahead) this.obstacles.trySpawnCrow(ahead.worldY, this.heightM, this.currentBoltIdx);
     }
 
     this.obstacles.update(dt);

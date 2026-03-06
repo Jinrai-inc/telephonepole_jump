@@ -213,6 +213,40 @@ class UI {
     ctx.restore();
 
     this._drawTimerBar(timeLeft, timeMax, crowWarning);
+    this._drawTapZones();
+  }
+
+  _drawTapZones() {
+    const ctx = this.ctx;
+    const W = this.W, H = this.H;
+    const zoneH = 56;
+    const zoneY = H - zoneH;
+
+    // Left zone
+    ctx.fillStyle = 'rgba(100,180,255,0.10)';
+    ctx.fillRect(0, zoneY, W / 2, zoneH);
+    ctx.strokeStyle = 'rgba(100,180,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, zoneY + 1, W / 2 - 2, zoneH - 2);
+    ctx.save();
+    ctx.font = 'bold 22px "Courier New"';
+    ctx.fillStyle = 'rgba(180,220,255,0.55)';
+    ctx.textAlign = 'center';
+    ctx.fillText('◀', W / 4, zoneY + zoneH * 0.62);
+    ctx.restore();
+
+    // Right zone
+    ctx.fillStyle = 'rgba(100,180,255,0.10)';
+    ctx.fillRect(W / 2, zoneY, W / 2, zoneH);
+    ctx.strokeStyle = 'rgba(100,180,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W / 2 + 1, zoneY + 1, W / 2 - 2, zoneH - 2);
+    ctx.save();
+    ctx.font = 'bold 22px "Courier New"';
+    ctx.fillStyle = 'rgba(180,220,255,0.55)';
+    ctx.textAlign = 'center';
+    ctx.fillText('▶', W * 3 / 4, zoneY + zoneH * 0.62);
+    ctx.restore();
   }
 
   _drawTimerBar(timeLeft, timeMax, crowWarning) {
