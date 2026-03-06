@@ -221,7 +221,7 @@ class UI {
     // Controls hint
     ctx.save();
     ctx.textAlign = 'center'; ctx.font = '9px "Courier New"'; ctx.fillStyle = '#cc9966';
-    ctx.fillText('← →キー/スワイプ:方向  スペース/タップ:ジャンプ', W/2, subY + 46);
+    ctx.fillText('← →キー / 左右タップ / スワイプ でジャンプ', W/2, subY + 46);
     ctx.restore();
 
     // Sound toggle
@@ -271,7 +271,7 @@ class UI {
 
   // ---- HUD ----
   drawHUD(height, score, highScore, timeLeft, timeMax, combo,
-          multiplierTimer, multiplierMax, crowWarning, animTick, soundEnabled) {
+          multiplierTimer, multiplierMax, animTick, soundEnabled) {
     const ctx = this.ctx;
     const W   = this.W;
 
@@ -327,7 +327,7 @@ class UI {
 
     ctx.restore();
 
-    this._drawTimerBar(timeLeft, timeMax, crowWarning);
+    this._drawTimerBar(timeLeft, timeMax);
     this._drawTapZones();
   }
 
@@ -364,7 +364,7 @@ class UI {
     ctx.restore();
   }
 
-  _drawTimerBar(timeLeft, timeMax, crowWarning) {
+  _drawTimerBar(timeLeft, timeMax) {
     const ctx   = this.ctx;
     const W     = this.W;
     const ratio = Math.max(0, timeLeft / timeMax);
@@ -373,9 +373,7 @@ class UI {
     ctx.fillStyle = '#2a2a2a';
     ctx.fillRect(barX, barY, barW, barH);
 
-    let color = ratio > 0.6 ? '#00cc44' : ratio > 0.3 ? '#ffcc00' : '#ff2200';
-    if (crowWarning && ratio > 0.3) color = '#ff8800';
-
+    const color = ratio > 0.6 ? '#00cc44' : ratio > 0.3 ? '#ffcc00' : '#ff2200';
     ctx.fillStyle = color;
     ctx.fillRect(barX, barY, Math.round(barW * ratio), barH);
 

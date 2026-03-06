@@ -11,12 +11,16 @@ const BOLT_SPACING = 72;
 const BOLT_POOL    = 30;
 const PX_PER_M     = 36; // 72px / 2m per bolt
 
-function getTimeLimit(heightM) {
-  if (heightM < 20)  return 2.0;
-  if (heightM < 50)  return 1.5;
-  if (heightM < 100) return 1.2;
-  if (heightM < 200) return 1.0;
-  return 0.7;
+// Timer always resets to TIME_MAX after each jump.
+// The drain rate (units/sec) increases with altitude.
+const TIME_MAX = 2.0;
+
+function getTimeDrainRate(heightM) {
+  if (heightM < 50)  return 1.0;
+  if (heightM < 100) return 1.5;
+  if (heightM < 200) return 2.0;
+  if (heightM < 350) return 2.8;
+  return 3.5;
 }
 
 // ---- Bolt ----
@@ -101,9 +105,6 @@ class Game {
     this.deathTimer  = 0;
     this.isNewRecord = false;
 
-    // Crow warning flash
-    this.crowWarning = false;
-
     // Notifications
     this.notifications = [];
 
@@ -153,26 +154,36 @@ class Game {
       const t = e.touches[0];
       this.swipeStartX = t.clientX;
       this.swipeStartY = t.clientY;
-      this._onTap(t.clientX, t.clientY);
+      // Menu screens: fire tap immediately for responsive buttons
+      if (this.state !== 'playing') this._onTap(t.clientX, t.clientY);
     }, { passive: false });
 
     this.canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (this.swipeStartX === null) return;
       const t  = e.touches[0];
-      const dx = t.clientX - this.swipeStartX;
       const dy = t.clientY - this.swipeStartY;
       if (this.state === 'charselect') {
-        this.charScrollY  = Math.max(0, this.charScrollY - dy * 1.5);
-        this.swipeStartY  = t.clientY;
-      } else if (this.state === 'playing' && Math.abs(dx) > 20) {
-        this.selectedSide = dx < 0 ? 'left' : 'right';
-        this.swipeStartX  = t.clientX;
+        this.charScrollY = Math.max(0, this.charScrollY - dy * 1.5);
+        this.swipeStartY = t.clientY;
       }
     }, { passive: false });
 
     this.canvas.addEventListener('touchend', (e) => {
       e.preventDefault();
+      if (this.swipeStartX !== null && this.state === 'playing'
+          && !this.player.jumping && !this.player.sliding) {
+        const t  = e.changedTouches[0];
+        const dx = t.clientX - this.swipeStartX;
+        if (Math.abs(dx) > 22) {
+          // Horizontal swipe → direction + jump
+          this.selectedSide = dx < 0 ? 'left' : 'right';
+          this._doJump();
+        } else {
+          // Tap → use tap-position for direction + jump
+          this._onTap(t.clientX, t.clientY);
+        }
+      }
       this.swipeStartX = this.swipeStartY = null;
     }, { passive: false });
 
@@ -260,7 +271,7 @@ class Game {
       this._handleNicknameKey(e); return;
     }
     if (this.state === 'title') {
-      if (e.code === 'Space' || e.code === 'Enter') this._startGame();
+      if (e.code === 'Enter') this._startGame();
       return;
     }
     if (this.state === 'charselect' || this.state === 'ranking') {
@@ -268,7 +279,7 @@ class Game {
       return;
     }
     if (this.state === 'gameover') {
-      if (e.code === 'Space' || e.code === 'Enter') this._startGame();
+      if (e.code === 'Enter') this._startGame();
       return;
     }
     if (e.code === 'KeyP' || e.code === 'Escape') {
@@ -277,10 +288,14 @@ class Game {
     }
     if (this.state !== 'playing') return;
 
-    if (e.code === 'ArrowLeft')  this.selectedSide = 'left';
-    if (e.code === 'ArrowRight') this.selectedSide = 'right';
-    if (e.code === 'Space') {
+    if (e.code === 'ArrowLeft') {
       e.preventDefault();
+      this.selectedSide = 'left';
+      if (!this.player.jumping && !this.player.sliding) this._doJump();
+    }
+    if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      this.selectedSide = 'right';
       if (!this.player.jumping && !this.player.sliding) this._doJump();
     }
   }
@@ -331,7 +346,6 @@ class Game {
     this.multiplierTimer = 0;
     this.isNewRecord    = false;
     this.deathTimer     = 0;
-    this.crowWarning    = false;
     this.notifications  = [];
     this.unlockToast    = null;
 
@@ -350,8 +364,8 @@ class Game {
     this.player.worldY      = startBolt.worldY;
     this.player.facingRight = startBolt.side === 'right';
 
-    this.timeMax  = getTimeLimit(0);
-    this.timeLeft = this.timeMax;
+    this.timeMax  = TIME_MAX;
+    this.timeLeft = TIME_MAX;
 
     sound.startBGM();
   }
@@ -394,13 +408,6 @@ class Game {
       return;
     }
 
-    const hasCrow = this.obstacles.crowOnSide(next.side, next.worldY);
-    if (hasCrow) {
-      this.timeLeft = Math.max(0.05, this.timeLeft - 0.3);
-      this._notify('カラス！ -0.3s', '#ff4400', CANVAS_W/2, CANVAS_H*0.44);
-      sound.crowPenalty();
-    }
-
     this.player.startJump(cur.worldX, cur.worldY, next.worldX, next.worldY);
     this.currentBoltIdx++;
     this._ensureBoltsAhead();
@@ -429,8 +436,8 @@ class Game {
       sound.combo(3);
     }
 
-    this.timeMax  = getTimeLimit(this.heightM);
-    this.timeLeft = this.timeMax;
+    this.timeMax  = TIME_MAX;
+    this.timeLeft = TIME_MAX;
   }
 
   _notify(text, color, x, y) {
@@ -486,26 +493,11 @@ class Game {
 
     if (this.state !== 'playing') return;
 
-    // Landing detection
-    const wasJumping = this.player.jumping;
     this.player.update(dt);
-    const justLanded = wasJumping && !this.player.jumping && !this.player.sliding;
-
-    if (justLanded) {
-      const cur   = this.bolts[this.currentBoltIdx];
-      const ahead = this.bolts[this.currentBoltIdx + 1];
-      // Spawn crow at the NEXT bolt's height so it visually blocks the upcoming jump target
-      if (cur && ahead) this.obstacles.trySpawnCrow(ahead.worldY, this.heightM, this.currentBoltIdx);
-    }
-
     this.obstacles.update(dt);
 
-    // Crow warning for next bolt
     const next = this.bolts[this.currentBoltIdx + 1];
     const cur  = this.bolts[this.currentBoltIdx];
-    this.crowWarning = !this.player.jumping && !this.player.sliding
-      && next && cur
-      && this.obstacles.crowOnSide(next.side, cur.worldY);
 
     // Multiplier countdown
     if (this.multiplierTimer > 0) {
@@ -523,9 +515,9 @@ class Game {
       this.unlockToast = null;
     }
 
-    // Timer
+    // Timer: drain rate increases with altitude
     if (!this.player.jumping && !this.player.sliding) {
-      this.timeLeft -= dt / 1000;
+      this.timeLeft -= (dt / 1000) * getTimeDrainRate(this.heightM);
       if (this.timeLeft <= 0) {
         this.timeLeft = 0;
         this._triggerDeath();
@@ -573,7 +565,6 @@ class Game {
     this._drawPole();
     this._drawBolts();
     this.obstacles.drawDagashi(ctx, (y) => this.worldToScreenY(y));
-    this.obstacles.drawCrows  (ctx, (y) => this.worldToScreenY(y));
     this._drawPlayer();
 
     if (this.state === 'playing' || this.state === 'paused') {
@@ -581,7 +572,7 @@ class Game {
         this.heightM, this.score, this.highScore,
         this.timeLeft, this.timeMax, this.combo,
         this.multiplierTimer, this.MULTIPLIER_DUR,
-        this.crowWarning, this.animTick, sound.enabled
+        this.animTick, sound.enabled
       );
       for (const n of this.notifications) n.draw(ctx);
     }
@@ -688,9 +679,7 @@ class Game {
       else                    ctx.fillRect(cx+POLE_WIDTH/2, sy-5, BOLT_WIDTH, 4);
 
       // Platform
-      let pc = isCur ? '#ffdd44'
-             : isNext ? ((this.crowWarning && Math.floor(this.animTick/8)%2===0) ? '#ff4422' : '#88ccff')
-             : '#999';
+      let pc = isCur ? '#ffdd44' : isNext ? '#88ccff' : '#999';
       ctx.fillStyle = pc;
       ctx.fillRect(bolt.worldX-BOLT_WIDTH/2, sy-BOLT_HEIGHT, BOLT_WIDTH, BOLT_HEIGHT);
 
@@ -704,7 +693,7 @@ class Game {
           ? cx-POLE_WIDTH/2-BOLT_WIDTH-14
           : cx+POLE_WIDTH/2+BOLT_WIDTH+14;
         ctx.save();
-        ctx.fillStyle = this.crowWarning ? '#ff4422' : '#ffff44';
+        ctx.fillStyle = '#ffff44';
         ctx.font='bold 13px "Courier New"'; ctx.textAlign='center';
         ctx.fillText(bolt.side==='left'?'◀':'▶', ax, sy-1);
         ctx.restore();
