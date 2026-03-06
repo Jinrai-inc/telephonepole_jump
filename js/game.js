@@ -149,6 +149,21 @@ class Game {
   _bindInput() {
     window.addEventListener('keydown', (e) => this._onKey(e));
 
+    // Hidden input for mobile virtual keyboard
+    this.nickInput = document.getElementById('nick-input');
+    this.nickInput.addEventListener('input', () => {
+      if (this.state === 'nickname') {
+        this.nickBuffer = this.nickInput.value.slice(0, 12);
+      }
+    });
+    this.nickInput.addEventListener('keydown', (e) => {
+      if (this.state === 'nickname' && e.key === 'Enter') {
+        e.preventDefault();
+        this._confirmNickname();
+      }
+    });
+    if (this.state === 'nickname') this._focusNickInput();
+
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       const t = e.touches[0];
@@ -221,7 +236,8 @@ class Game {
     const hit = (r) => r && cx >= r.x && cx <= r.x+r.w && cy >= r.y && cy <= r.y+r.h;
 
     if (this.state === 'nickname') {
-      if (hit(this.ui.nickOkRect)) this._confirmNickname();
+      if (hit(this.ui.nickOkRect)) { this._confirmNickname(); return; }
+      this._focusNickInput();
       return;
     }
 
@@ -319,19 +335,29 @@ class Game {
   }
 
   // ---- Nickname ----
+  _focusNickInput() {
+    if (!this.nickInput) return;
+    this.nickInput.value = this.nickBuffer;
+    this.nickInput.focus();
+  }
+
   _handleNicknameKey(e) {
     if (e.code === 'Enter') { this._confirmNickname(); return; }
     if (e.code === 'Backspace') {
-      this.nickBuffer = this.nickBuffer.slice(0, -1); return;
+      this.nickBuffer = this.nickBuffer.slice(0, -1);
+      if (this.nickInput) this.nickInput.value = this.nickBuffer;
+      return;
     }
     if (e.key.length === 1 && this.nickBuffer.length < 12) {
       this.nickBuffer += e.key;
+      if (this.nickInput) this.nickInput.value = this.nickBuffer;
     }
   }
 
   _confirmNickname() {
     if (!this.nickBuffer.trim()) this.nickBuffer = 'ゲスト';
     ranking.setNickname(this.nickBuffer);
+    if (this.nickInput) this.nickInput.blur();
     this.state = 'title';
   }
 
