@@ -71,7 +71,7 @@ class RankingManager {
   _saveLocal(entry) {
     let scores = this._loadLocal();
     scores.push(entry);
-    scores.sort((a, b) => b.height - a.height);
+    scores = this._dedupByNick(scores);
     scores = scores.slice(0, MAX_RANK_ENTRIES);
     localStorage.setItem(LOCAL_KEY_SCORES, JSON.stringify(scores));
   }
@@ -82,17 +82,29 @@ class RankingManager {
     } catch { return []; }
   }
 
+  // Keep only the best entry per nickname, sorted by height desc
+  _dedupByNick(scores) {
+    const best = new Map();
+    for (const s of scores) {
+      if (!best.has(s.nick) || s.height > best.get(s.nick).height) {
+        best.set(s.nick, s);
+      }
+    }
+    return Array.from(best.values()).sort((a, b) => b.height - a.height);
+  }
+
   // Fetch top-10, calls callback(entries) where entries = [{rank,nick,height,score,char}]
   fetchTop10(callback) {
     if (this._db) {
+      // Fetch more entries so dedup still yields a full top-10
       this._db.ref('scores')
         .orderByChild('height')
-        .limitToLast(10)
+        .limitToLast(200)
         .once('value')
         .then(snap => {
-          const entries = [];
-          snap.forEach(child => entries.push(child.val()));
-          entries.sort((a, b) => b.height - a.height);
+          const raw = [];
+          snap.forEach(child => raw.push(child.val()));
+          const entries = this._dedupByNick(raw).slice(0, 10);
           this._cache = entries.map((e, i) => ({ rank: i+1, ...e }));
           callback(this._cache);
         })
@@ -104,14 +116,14 @@ class RankingManager {
   }
 
   _localTop10() {
-    return this._loadLocal()
+    return this._dedupByNick(this._loadLocal())
       .slice(0, 10)
       .map((e, i) => ({ rank: i + 1, ...e }));
   }
 
   // Returns the player's local best rank, or null
   myRank(heightM) {
-    const all = this._loadLocal();
+    const all = this._dedupByNick(this._loadLocal());
     const idx = all.findIndex(e => e.height <= heightM);
     return idx === -1 ? all.length + 1 : idx + 1;
   }
