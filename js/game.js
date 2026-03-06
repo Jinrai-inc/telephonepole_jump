@@ -493,7 +493,15 @@ class Game {
 
     if (this.state !== 'playing') return;
 
+    const wasJumping = this.player.jumping;
     this.player.update(dt);
+    const justLanded = wasJumping && !this.player.jumping && !this.player.sliding;
+
+    if (justLanded) {
+      const cur = this.bolts[this.currentBoltIdx];
+      if (cur) this.obstacles.trySpawnEntity(cur.worldY, this.heightM, this.currentBoltIdx);
+    }
+
     this.obstacles.update(dt);
 
     const next = this.bolts[this.currentBoltIdx + 1];
@@ -562,6 +570,7 @@ class Game {
 
     // ---- In-game states ----
     this._drawBackground();
+    this.obstacles.drawEntities(ctx, (y) => this.worldToScreenY(y));
     this._drawPole();
     this._drawBolts();
     this.obstacles.drawDagashi(ctx, (y) => this.worldToScreenY(y));
