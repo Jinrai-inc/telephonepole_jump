@@ -16,15 +16,18 @@ class FlyingEntity {
     this.active = true;
     this.phase  = Math.random() * Math.PI * 2;
 
-    const baseSpeed = { bird: 65, ptero: 58, plane: 145, ship: 95, ufo: 52 };
+    const baseSpeed = { bird: 65, ptero: 58, plane: 145, ship: 100, ufo: 52 };
     const speed = (baseSpeed[type] || 80) + Math.random() * 40;
     this.x  = fromLeft ? -75 : CANVAS_W + 75;
     this.vx = fromLeft ? speed : -speed;
+    // Rockets fly diagonally upward (positive = up in world coords)
+    this.vy = type === 'ship' ? 45 + Math.random() * 25 : 0;
   }
 
   update(dt) {
-    this.x     += this.vx * (dt / 1000);
-    this.phase += dt * 0.005;
+    this.x      += this.vx * (dt / 1000);
+    this.worldY += this.vy * (dt / 1000); // ship climbs upward
+    this.phase  += dt * 0.005;
     if (this.vx > 0 && this.x > CANVAS_W + 85) this.active = false;
     if (this.vx < 0 && this.x < -85)            this.active = false;
   }
@@ -37,6 +40,12 @@ class FlyingEntity {
     if (this.vx < 0) {
       ctx.translate(x, y);
       ctx.scale(-1, 1);
+      ctx.translate(-x, -y);
+    }
+    // Rocket tilts 45° so nose points diagonally in flight direction.
+    if (this.type === 'ship') {
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 4);
       ctx.translate(-x, -y);
     }
     switch (this.type) {

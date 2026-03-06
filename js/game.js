@@ -400,11 +400,12 @@ class Game {
     const next = this.bolts[this.currentBoltIdx + 1];
     if (!cur || !next) return;
 
-    // Block jump if wrong direction selected
+    // Block jump if wrong direction selected; breaks combo
     if (this.selectedSide !== next.side) {
       const hint = next.side === 'left' ? '◀ 左！' : '▶ 右！';
       this._notify(hint, '#ffee44', CANVAS_W/2, CANVAS_H*0.45);
       sound.crowPenalty();
+      this.combo = 0;
       return;
     }
 
