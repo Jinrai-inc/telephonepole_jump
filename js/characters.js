@@ -27,26 +27,50 @@ const CHARACTERS = [
     }
   },
   // ------------------------------------------------------------------
-  // 1  ミッちゃん – メガネ少年
+  // 1  ポチ – やんちゃ犬
   // ------------------------------------------------------------------
   {
-    id: 1, name: 'ミッちゃん', nameFull: 'メガネ少年 ミッちゃん',
+    id: 1, name: 'ポチ', nameFull: 'やんちゃ犬 ポチ',
     cost: 500,
     draw(ctx, px, py, f, a) {
       const bob = a.state === 'idle' ? Math.round(Math.sin(a.phase * Math.PI * 2) * 1) : 0;
       py += bob;
-      skin(ctx, px+4, py,   8, 8);
-      hair(ctx, px+3, py,   10,3, '#111');
-      eyes(ctx, px, py+4, f);
-      // Glasses
-      ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-      ctx.strokeRect(px+4, py+4, 3, 3);
-      ctx.strokeRect(px+9, py+4, 3, 3);
-      mouth(ctx, px+6, py+7);
-      body(ctx, px+3, py+8, 10,7, '#226633');
-      arms(ctx, px, py+8, f, '#f5c88a', a.state);
-      pants(ctx, px+3, py+15, '#334477');
-      shoes(ctx, px, py+18);
+      // Body (shiba-inu tan)
+      ctx.fillStyle = '#cc8833'; ctx.fillRect(px+3, py+6, 10, 12);
+      // Head
+      ctx.fillStyle = '#cc8833'; ctx.fillRect(px+4, py, 8, 9);
+      // Floppy ears
+      ctx.fillStyle = '#aa6622';
+      ctx.fillRect(px+2,  py+1, 3, 6);
+      ctx.fillRect(px+11, py+1, 3, 6);
+      // Muzzle
+      ctx.fillStyle = '#eebb88'; ctx.fillRect(px+5, py+4, 6, 4);
+      // Nose
+      ctx.fillStyle = '#221100'; ctx.fillRect(px+7, py+4, 2, 2);
+      // Eyes
+      ctx.fillStyle = '#221100';
+      ctx.fillRect(px+5, py+2, 2, 2);
+      ctx.fillRect(px+9, py+2, 2, 2);
+      // Tail (curled up, wagging)
+      ctx.fillStyle = '#cc8833';
+      const tailX = f ? px - 3 : px + 15;
+      const wag = a.state === 'idle' ? Math.round(Math.sin(a.phase * Math.PI * 4) * 2) : 0;
+      ctx.fillRect(tailX, py + 4 + wag, 3, 4);
+      ctx.fillRect(tailX + (f ? -2 : 2), py + 2 + wag, 3, 3);
+      // Paws
+      ctx.fillStyle = '#eebb88';
+      ctx.fillRect(px+3, py+17, 4, 3);
+      ctx.fillRect(px+9, py+17, 4, 3);
+      // Jump: arms (front paws) up
+      if (a.state === 'jump') {
+        ctx.fillStyle = '#cc8833';
+        ctx.fillRect(px+1,  py+2, 3, 5);
+        ctx.fillRect(px+12, py+2, 3, 5);
+      } else if (a.state === 'slide') {
+        ctx.fillStyle = '#cc8833';
+        ctx.fillRect(px-2,  py+5, 5, 2);
+        ctx.fillRect(px+13, py+5, 5, 2);
+      }
     }
   },
   // ------------------------------------------------------------------
@@ -137,26 +161,52 @@ const CHARACTERS = [
     }
   },
   // ------------------------------------------------------------------
-  // 5  トモくん – 戦隊ゴッコ
+  // 5  ライオン – 百獣の王
   // ------------------------------------------------------------------
   {
-    id: 5, name: 'トモくん', nameFull: '戦隊ゴッコ トモくん',
+    id: 5, name: 'ライオン', nameFull: '百獣の王 ライオン',
     cost: 5000,
     draw(ctx, px, py, f, a) {
       const bob = a.state === 'idle' ? Math.round(Math.sin(a.phase * Math.PI * 2) * 1) : 0;
       py += bob;
-      skin(ctx, px+4, py,   8, 8);
-      hair(ctx, px+3, py,   10,3, '#222');
-      // Helmet visor
-      ctx.fillStyle = '#ff2200'; ctx.fillRect(px+3, py, 10, 5);
-      ctx.fillStyle = '#ffee00'; ctx.fillRect(px+4, py+2, 8, 2); // visor
-      eyes(ctx, px, py+4, f);
-      body(ctx, px+3, py+8, 10,7, '#cc1100');  // red suit
-      // Belt
-      ctx.fillStyle = '#ffee00'; ctx.fillRect(px+3, py+13, 10, 2);
-      arms(ctx, px, py+8, f, '#cc1100', a.state);
-      pants(ctx, px+3, py+15, '#cc1100');
-      shoes(ctx, px, py+18, '#cc1100');
+      // Body (golden)
+      ctx.fillStyle = '#ddaa33'; ctx.fillRect(px+3, py+6, 10, 12);
+      // Mane (dark brown around head)
+      ctx.fillStyle = '#7a3300'; ctx.fillRect(px+2, py-1, 12, 12);
+      // Head (golden inside mane)
+      ctx.fillStyle = '#ffcc55'; ctx.fillRect(px+4, py+1, 8, 8);
+      // Ears (small, peeking above mane)
+      ctx.fillStyle = '#cc8833';
+      ctx.fillRect(px+3,  py-2, 3, 3);
+      ctx.fillRect(px+10, py-2, 3, 3);
+      // Muzzle
+      ctx.fillStyle = '#ffddaa'; ctx.fillRect(px+5, py+5, 6, 4);
+      // Nose
+      ctx.fillStyle = '#cc5533'; ctx.fillRect(px+7, py+5, 2, 2);
+      // Eyes (golden amber)
+      ctx.fillStyle = '#cc6600';
+      ctx.fillRect(px+5, py+2, 2, 2);
+      ctx.fillRect(px+9, py+2, 2, 2);
+      // Tail with tuft
+      ctx.fillStyle = '#ddaa33';
+      const tailX = f ? px - 3 : px + 15;
+      ctx.fillRect(tailX, py + 6, 3, 8);
+      ctx.fillStyle = '#7a3300';
+      ctx.fillRect(tailX + (f ? -2 : 0), py + 13, 5, 4);
+      // Paws
+      ctx.fillStyle = '#ffddaa';
+      ctx.fillRect(px+3, py+17, 4, 3);
+      ctx.fillRect(px+9, py+17, 4, 3);
+      // Jump: paws up
+      if (a.state === 'jump') {
+        ctx.fillStyle = '#ddaa33';
+        ctx.fillRect(px+1,  py+1, 3, 6);
+        ctx.fillRect(px+12, py+1, 3, 6);
+      } else if (a.state === 'slide') {
+        ctx.fillStyle = '#ddaa33';
+        ctx.fillRect(px-2,  py+5, 5, 2);
+        ctx.fillRect(px+13, py+5, 5, 2);
+      }
     }
   },
   // ------------------------------------------------------------------

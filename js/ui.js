@@ -57,101 +57,216 @@ class UI {
     ctx.strokeRect(x, y, w, h);
   }
 
-  // ---- Title Screen ----
+  // ---- Title Screen (昭和の空き地) ----
   drawTitle(highScore, animTick, soundEnabled) {
     const ctx = this.ctx;
     const W = this.W, H = this.H;
 
-    // Background
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#1a0a3a');
-    grad.addColorStop(1, '#ff6633');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    // === Sky (summer afternoon) ===
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+    skyGrad.addColorStop(0,    '#2255aa');
+    skyGrad.addColorStop(0.55, '#66aadd');
+    skyGrad.addColorStop(0.85, '#ffcc77');
+    skyGrad.addColorStop(1,    '#ff9944');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H * 0.62);
 
-    // Stars
-    ctx.fillStyle = '#ffffaa';
-    [[20,30],[60,15],[100,50],[130,20],[160,45],[40,70],[90,80],[150,65],
-     [200,25],[240,55],[280,20],[320,40],[300,70]]
-      .forEach(([x, y]) => ctx.fillRect(x, y, 2, 2));
+    // === Sun ===
+    ctx.fillStyle = 'rgba(255,238,100,0.30)';
+    ctx.beginPath(); ctx.arc(W * 0.82, 46, 36, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffee44';
+    ctx.beginPath(); ctx.arc(W * 0.82, 46, 22, 0, Math.PI * 2); ctx.fill();
 
-    // Pole silhouette
-    this._drawPoleSilhouette(W/2, H*0.08, H*0.52);
+    // === Clouds ===
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    this._titleCloud(28, 52, 42);
+    this._titleCloud(W - 60, 78, 34);
+    this._titleCloud(W * 0.55, 36, 28);
 
-    // Title box
-    this._panel(W*0.05, H*0.15, W*0.9, 62, '#ffcc00');
+    // === Background building silhouettes ===
+    ctx.fillStyle = '#2a3a55';
+    ctx.fillRect(0,     H * 0.44, 72, H * 0.20);
+    ctx.fillRect(W - 70, H * 0.48, 70, H * 0.16);
+    // Windows (lit yellow)
+    ctx.fillStyle = '#ffee88';
+    for (let wy = 0; wy < 3; wy++) {
+      ctx.fillRect(10 + 0  * 22, H * 0.46 + wy * 14, 10, 8);
+      ctx.fillRect(10 + 1  * 22, H * 0.46 + wy * 14, 10, 8);
+    }
+    ctx.fillRect(W - 54, H * 0.50, 10, 8);
+    ctx.fillRect(W - 34, H * 0.50, 10, 8);
+    ctx.fillRect(W - 54, H * 0.56, 10, 8);
+
+    // === Utility pole ===
+    ctx.fillStyle = '#4a3728';
+    ctx.fillRect(W/2 - 6, H * 0.05, 12, H * 0.58);
+    ctx.fillStyle = '#3a2718';
+    ctx.fillRect(W/2 - 6, H * 0.05, 3, H * 0.58);
+    // Crossarms
+    ctx.fillStyle = '#5a4738';
+    ctx.fillRect(W/2 - 38, H * 0.12, 76, 7);
+    ctx.fillRect(W/2 - 26, H * 0.20, 52, 5);
+    // Insulators
+    ctx.fillStyle = '#88aacc';
+    for (let i = 0; i < 3; i++) ctx.fillRect(W/2 - 36 + i * 30, H * 0.10, 5, 9);
+    // Wires
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.moveTo(0, H * 0.14 + i * 6);
+      ctx.lineTo(W/2 - 36 + i * 30, H * 0.12 + 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W/2 - 36 + i * 30, H * 0.12 + 5);
+      ctx.lineTo(W, H * 0.17 + i * 6); ctx.stroke();
+    }
+    // Climbing silhouette on pole
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(W/2 - 5, H * 0.30, 10, 14);
+    ctx.fillRect(W/2 - 4, H * 0.25, 8,  9);
+
+    // === Wooden fences ===
+    this._woodenFence(0,     H * 0.40, 60, H * 0.24);
+    this._woodenFence(W - 56, H * 0.43, 56, H * 0.21);
+
+    // === Ground (dry dirt) ===
+    const gnd = ctx.createLinearGradient(0, H * 0.60, 0, H);
+    gnd.addColorStop(0,   '#c8903c');
+    gnd.addColorStop(0.3, '#b07828');
+    gnd.addColorStop(1,   '#8a5c18');
+    ctx.fillStyle = gnd;
+    ctx.fillRect(0, H * 0.60, W, H * 0.40);
+    // Dirt texture
+    ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath(); ctx.moveTo(0, H * 0.63 + i * 18);
+      ctx.lineTo(W, H * 0.645 + i * 18); ctx.stroke();
+    }
+
+    // === Grass tufts along ground line ===
+    [18, 70, 120, W/2-55, W/2+38, W-85, W-30].forEach(x => {
+      this._grassTuft(x, H * 0.615 + (x % 5) * 0.003 * H);
+    });
+
+    // === Props: rocks, tire, cardboard box ===
+    ctx.fillStyle = '#9a8878'; ctx.fillRect(44, H * 0.68, 18, 7);
+    ctx.fillStyle = '#7a6858'; ctx.fillRect(W - 65, H * 0.72, 14, 6);
+    // Tire
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(W * 0.83, H * 0.77, 13, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(W * 0.83, H * 0.77, 6, 0, Math.PI * 2); ctx.stroke();
+    // Cardboard box
+    ctx.fillStyle = '#cc9944'; ctx.fillRect(14, H * 0.73, 28, 20);
+    ctx.fillStyle = '#aa7722'; ctx.fillRect(14, H * 0.73, 28, 3);
+    ctx.strokeStyle = '#884400'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(28, H * 0.73); ctx.lineTo(28, H * 0.73 + 20); ctx.stroke();
+
+    // === Title sign (wooden board) ===
+    const signX = W * 0.06, signY = H * 0.27, signW = W * 0.88, signH = 70;
+    ctx.fillStyle = '#bb8833';
+    ctx.fillRect(signX, signY, signW, signH);
+    // Wood grain
+    ctx.strokeStyle = 'rgba(80,40,0,0.15)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath(); ctx.moveTo(signX, signY + 4 + i * 11);
+      ctx.lineTo(signX + signW, signY + 6 + i * 11); ctx.stroke();
+    }
+    ctx.strokeStyle = '#7a4a10'; ctx.lineWidth = 3;
+    ctx.strokeRect(signX, signY, signW, signH);
+    // Nails
+    ctx.fillStyle = '#5a3408';
+    [[signX+6, signY+5],[signX+signW-10, signY+5],
+     [signX+6, signY+signH-9],[signX+signW-10, signY+signH-9]]
+      .forEach(([nx, ny]) => ctx.fillRect(nx, ny, 4, 4));
+    // Sign text
     ctx.save();
     ctx.textAlign = 'center';
-    ctx.font = 'bold 14px "Courier New"';
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillText('TELEPHONE', W/2, H*0.15+22);
-    ctx.font = 'bold 20px "Courier New"';
-    ctx.fillStyle = '#ff4400';
-    ctx.fillText('POLE JUMP', W/2, H*0.15+48);
+    ctx.font = 'bold 14px "Courier New"'; ctx.fillStyle = '#3a1800';
+    ctx.fillText('TELEPHONE', W/2, signY + 26);
+    ctx.font = 'bold 21px "Courier New"'; ctx.fillStyle = '#8b0000';
+    ctx.fillText('POLE JUMP', W/2, signY + 54);
     ctx.restore();
 
     // Best score + nickname
     ctx.save();
     ctx.textAlign = 'center';
-    ctx.font = 'bold 11px "Courier New"';
-    ctx.fillStyle = '#aaffaa';
-    ctx.fillText(`BEST: ${highScore}m`, W/2, H*0.15+76);
+    ctx.font = 'bold 11px "Courier New"'; ctx.fillStyle = '#ffe8aa';
+    ctx.fillText(`BEST: ${highScore}m`, W/2, signY + signH + 18);
     const nick = (typeof ranking !== 'undefined' && ranking.nickname) ? ranking.nickname : '';
     if (nick) {
-      ctx.font = '10px "Courier New"';
-      ctx.fillStyle = '#88aaff';
-      ctx.fillText(`${nick} のベスト`, W/2, H*0.15+92);
+      ctx.font = '10px "Courier New"'; ctx.fillStyle = '#ffddaa';
+      ctx.fillText(`${nick} のベスト`, W/2, signY + signH + 32);
     }
     ctx.restore();
 
-    // START (blink)
+    // START button
     const blink = Math.floor(animTick/28) % 2 === 0;
-    const sY = H*0.72;
+    const sY = H * 0.72;
     if (blink) {
-      this.startBtnRect = this._btn('▶  START', W*0.2, sY, W*0.6, 36, '#ffcc00', '#000', 16);
+      this.startBtnRect = this._btn('▶  START', W*0.2, sY, W*0.6, 36, '#ffcc44', '#3a1a00', 16);
     } else {
-      ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
       ctx.strokeRect(W*0.2, sY, W*0.6, 36);
       ctx.save();
-      ctx.font = 'bold 16px "Courier New"'; ctx.fillStyle = '#ffcc00'; ctx.textAlign = 'center';
-      ctx.fillText('▶  START', W/2, sY+24);
+      ctx.font = 'bold 16px "Courier New"'; ctx.fillStyle = '#ffcc44'; ctx.textAlign = 'center';
+      ctx.fillText('▶  START', W/2, sY + 24);
       ctx.restore();
       this.startBtnRect = { x: W*0.2, y: sY, w: W*0.6, h: 36 };
     }
 
     // Sub-buttons row
     const subY = sY + 44;
-    const btnW = W*0.42;
-    this.charBtnRect = this._outlineBtn('👤 キャラ選択', W*0.05, subY, btnW, 26, '#aaddff', 10);
-    this.rankBtnRect = this._outlineBtn('🏆 ランキング', W*0.53, subY, btnW, 26, '#ffdd88', 10);
+    const btnW = W * 0.42;
+    this.charBtnRect = this._outlineBtn('👤 キャラ選択', W*0.05, subY, btnW, 26, '#ffddaa', 10);
+    this.rankBtnRect = this._outlineBtn('🏆 ランキング', W*0.53, subY, btnW, 26, '#ffddaa', 10);
 
     // Controls hint
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = '9px "Courier New"';
-    ctx.fillStyle = '#888888';
-    ctx.fillText('← →キー/スワイプ:方向  スペース/タップ:ジャンプ', W/2, subY+46);
+    ctx.textAlign = 'center'; ctx.font = '9px "Courier New"'; ctx.fillStyle = '#cc9966';
+    ctx.fillText('← →キー/スワイプ:方向  スペース/タップ:ジャンプ', W/2, subY + 46);
     ctx.restore();
 
     // Sound toggle
     const sndLabel = soundEnabled ? '🔊' : '🔇';
-    this.soundBtnRect = this._outlineBtn(sndLabel, W-34, 8, 26, 22, '#888', 12);
+    this.soundBtnRect = this._outlineBtn(sndLabel, W-34, 8, 26, 22, '#cc9966', 12);
   }
 
-  _drawPoleSilhouette(cx, topY, height) {
+  _titleCloud(x, y, r) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(cx-4, topY, 8, height);
-    ctx.fillRect(cx-30, topY+10, 60, 5);
-    ctx.fillRect(cx-20, topY+25, 40, 4);
-    for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = '#555';
-      ctx.fillRect(cx-30+i*24, topY+6, 6, 14);
+    ctx.beginPath();
+    ctx.arc(x,            y,           r * 0.50, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.42, y - r * 0.1, r * 0.38, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.78, y,           r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  _woodenFence(x, y, w, h) {
+    const ctx = this.ctx;
+    const pw = 11, gap = 2;
+    // Planks
+    for (let px = x; px < x + w; px += pw + gap) {
+      const cw = Math.min(pw, x + w - px);
+      ctx.fillStyle = '#aa8830'; ctx.fillRect(px, y, cw, h);
+      ctx.fillStyle = 'rgba(80,40,0,0.18)';
+      ctx.fillRect(px + 2, y, 1, h);
+      if (cw > 6) ctx.fillRect(px + 6, y, 1, h);
+      // Weathered top
+      ctx.fillStyle = '#cc9944'; ctx.fillRect(px, y, cw, 3);
     }
-    // Climbing char silhouette on pole
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(cx-5, topY+height*0.55, 10, 16);
-    ctx.fillRect(cx-4, topY+height*0.5,  8,  8);
+    // Horizontal rails
+    ctx.fillStyle = '#7a5810';
+    ctx.fillRect(x, y,         w, 5);
+    ctx.fillRect(x, y + h - 5, w, 5);
+    ctx.fillRect(x, y + h * 0.5 - 2, w, 4);
+    // Shadow base
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x, y + h - 3, w, 3);
+  }
+
+  _grassTuft(x, y) {
+    const ctx = this.ctx;
+    const cols = ['#4a7a18', '#5a8a22', '#3a6a10'];
+    ctx.strokeStyle = cols[Math.round(x) % 3]; ctx.lineWidth = 1.5;
+    [[-4,-10],[-2,-13],[0,-11],[2,-13],[4,-10],[6,-9]].forEach(([dx, dy]) => {
+      ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.lineTo(x + dx - 1, y + dy); ctx.stroke();
+    });
   }
 
   // ---- HUD ----

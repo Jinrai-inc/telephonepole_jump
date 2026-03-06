@@ -386,11 +386,12 @@ class Game {
     const next = this.bolts[this.currentBoltIdx + 1];
     if (!cur || !next) return;
 
-    // Direction mismatch penalty
+    // Block jump if wrong direction selected
     if (this.selectedSide !== next.side) {
-      this.timeLeft = Math.max(0.05, this.timeLeft - 0.3);
-      this._notify('方向ミス！ -0.3s', '#ff8800', CANVAS_W/2, CANVAS_H*0.38);
+      const hint = next.side === 'left' ? '◀ 左！' : '▶ 右！';
+      this._notify(hint, '#ffee44', CANVAS_W/2, CANVAS_H*0.45);
       sound.crowPenalty();
+      return;
     }
 
     const hasCrow = this.obstacles.crowOnSide(next.side, next.worldY);
