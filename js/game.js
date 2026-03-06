@@ -130,6 +130,7 @@ class Game {
 
     this._bindInput();
     this.lastTime = null;
+    AdMobManager.init();
     requestAnimationFrame((t) => this._loop(t));
   }
 
@@ -594,7 +595,10 @@ class Game {
     // Death transition
     if (this.player.sliding) {
       this.deathTimer -= dt;
-      if (this.deathTimer <= 0) this.state = 'gameover';
+      if (this.deathTimer <= 0) {
+        this.state = 'gameover';
+        AdMobManager.showOnGameOver();
+      }
     }
   }
 
