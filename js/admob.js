@@ -1,15 +1,12 @@
 // AdMob integration via @capacitor-community/admob
-// Interstitial ad shown on game over
+// Interstitial ad shown on game over when player reached 400m+
 
 const INTERSTITIAL_AD_ID = 'ca-app-pub-2054790971615092/4194358157';
-
-// Minimum games between ads to avoid over-showing
-const AD_INTERVAL = 3;
+const AD_HEIGHT_THRESHOLD = 400; // meters
 
 const AdMobManager = (() => {
   let initialized = false;
   let adLoaded = false;
-  let gameCount = 0;
   let AdMobPlugin = null;
 
   async function init() {
@@ -37,10 +34,10 @@ const AdMobManager = (() => {
     }
   }
 
-  async function showOnGameOver() {
-    gameCount++;
+  // Call with the player's final height in meters
+  async function showOnGameOver(heightM) {
     if (!initialized || !adLoaded) return;
-    if (gameCount % AD_INTERVAL !== 0) return;
+    if (heightM < AD_HEIGHT_THRESHOLD) return;
 
     try {
       adLoaded = false;
@@ -48,7 +45,6 @@ const AdMobManager = (() => {
     } catch (e) {
       console.warn('AdMob show failed:', e);
     } finally {
-      // Preload next ad
       _loadInterstitial();
     }
   }
