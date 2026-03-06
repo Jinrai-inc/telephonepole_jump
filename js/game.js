@@ -172,15 +172,20 @@ class Game {
     this.canvas.addEventListener('touchend', (e) => {
       e.preventDefault();
       if (this.swipeStartX !== null && this.state === 'playing'
-          && !this.player.jumping && !this.player.sliding) {
+          && !this.player.sliding) {
         const t  = e.changedTouches[0];
         const dx = t.clientX - this.swipeStartX;
         if (Math.abs(dx) > 22) {
-          // Horizontal swipe → direction + jump
-          this.selectedSide = dx < 0 ? 'left' : 'right';
-          this._doJump();
+          // Horizontal swipe → direction + jump (or wrong-direction check)
+          const side = dx < 0 ? 'left' : 'right';
+          if (!this.player.jumping) {
+            this.selectedSide = side;
+            this._doJump();
+          } else {
+            this._checkWrongDirection(side);
+          }
         } else {
-          // Tap → use tap-position for direction + jump
+          // Tap → use tap-position for direction + jump (or wrong-direction check)
           this._onTap(t.clientX, t.clientY);
         }
       }
@@ -258,10 +263,15 @@ class Game {
 
     if (this.state === 'playing') {
       if (hit(this.ui.soundHudRect)) { sound.toggle(); return; }
-      if (!this.player.jumping && !this.player.sliding) {
-        // Left half → left, right half → right
-        this.selectedSide = cx < CANVAS_W / 2 ? 'left' : 'right';
-        this._doJump();
+      if (!this.player.sliding) {
+        const side = cx < CANVAS_W / 2 ? 'left' : 'right';
+        if (!this.player.jumping) {
+          // Left half → left, right half → right
+          this.selectedSide = side;
+          this._doJump();
+        } else {
+          this._checkWrongDirection(side);
+        }
       }
     }
   }
@@ -290,13 +300,21 @@ class Game {
 
     if (e.code === 'ArrowLeft') {
       e.preventDefault();
-      this.selectedSide = 'left';
-      if (!this.player.jumping && !this.player.sliding) this._doJump();
+      if (!this.player.jumping && !this.player.sliding) {
+        this.selectedSide = 'left';
+        this._doJump();
+      } else if (this.player.jumping) {
+        this._checkWrongDirection('left');
+      }
     }
     if (e.code === 'ArrowRight') {
       e.preventDefault();
-      this.selectedSide = 'right';
-      if (!this.player.jumping && !this.player.sliding) this._doJump();
+      if (!this.player.jumping && !this.player.sliding) {
+        this.selectedSide = 'right';
+        this._doJump();
+      } else if (this.player.jumping) {
+        this._checkWrongDirection('right');
+      }
     }
   }
 
@@ -395,6 +413,17 @@ class Game {
   }
 
   // ---- Jump ----
+  _checkWrongDirection(side) {
+    const next = this.bolts[this.currentBoltIdx + 1];
+    if (!next) return;
+    if (side !== next.side) {
+      const hint = next.side === 'left' ? '◀ 左！' : '▶ 右！';
+      this._notify(hint, '#ffee44', CANVAS_W/2, CANVAS_H*0.45);
+      sound.crowPenalty();
+      this.combo = 0;
+    }
+  }
+
   _doJump() {
     const cur  = this.bolts[this.currentBoltIdx];
     const next = this.bolts[this.currentBoltIdx + 1];
@@ -402,10 +431,7 @@ class Game {
 
     // Block jump if wrong direction selected; breaks combo
     if (this.selectedSide !== next.side) {
-      const hint = next.side === 'left' ? '◀ 左！' : '▶ 右！';
-      this._notify(hint, '#ffee44', CANVAS_W/2, CANVAS_H*0.45);
-      sound.crowPenalty();
-      this.combo = 0;
+      this._checkWrongDirection(this.selectedSide);
       return;
     }
 
