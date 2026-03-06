@@ -1,0 +1,15 @@
+{
+  "appId": "com.jinraiinc.telephonepolejump",
+  "appName": "Telephone Pole Jump",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#87CEEB",
+      "showSpinner": false
+    }
+  }
+}

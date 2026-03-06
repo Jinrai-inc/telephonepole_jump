@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Telephone Pole Jump</string>
+    <string name="title_activity_main">Telephone Pole Jump</string>
+    <string name="package_name">com.jinraiinc.telephonepolejump</string>
+    <string name="custom_url_scheme">com.jinraiinc.telephonepolejump</string>
+</resources>
