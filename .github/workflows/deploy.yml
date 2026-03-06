@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/telephone-pole-jump-phase1-EYL9A
 
 permissions:
   contents: write
