@@ -7,13 +7,15 @@ class UI {
     this.W      = canvas.width;
     this.H      = canvas.height;
     // Button hit-test rects set during draw
-    this.retryBtnRect  = null;
-    this.titleBtnRect  = null;
-    this.startBtnRect  = null;
-    this.charBtnRect   = null;
-    this.rankBtnRect   = null;
-    this.soundBtnRect  = null;
-    this.backBtnRect   = null;
+    this.retryBtnRect   = null;
+    this.titleBtnRect   = null;
+    this.rankingBtnRect = null;
+    this.startBtnRect   = null;
+    this.charBtnRect    = null;
+    this.rankBtnRect    = null;
+    this.soundBtnRect   = null;
+    this.soundHudRect   = null;
+    this.backBtnRect    = null;
   }
 
   resize() { this.W = this.canvas.width; this.H = this.canvas.height; }
@@ -88,12 +90,18 @@ class UI {
     ctx.fillText('POLE JUMP', W/2, H*0.15+48);
     ctx.restore();
 
-    // Best score
+    // Best score + nickname
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = 'bold 11px "Courier New"';
     ctx.fillStyle = '#aaffaa';
     ctx.fillText(`BEST: ${highScore}m`, W/2, H*0.15+76);
+    const nick = (typeof ranking !== 'undefined' && ranking.nickname) ? ranking.nickname : '';
+    if (nick) {
+      ctx.font = '10px "Courier New"';
+      ctx.fillStyle = '#88aaff';
+      ctx.fillText(`${nick} のベスト`, W/2, H*0.15+92);
+    }
     ctx.restore();
 
     // START (blink)
@@ -148,7 +156,7 @@ class UI {
 
   // ---- HUD ----
   drawHUD(height, score, highScore, timeLeft, timeMax, combo,
-          multiplierTimer, multiplierMax, crowWarning, animTick) {
+          multiplierTimer, multiplierMax, crowWarning, animTick, soundEnabled) {
     const ctx = this.ctx;
     const W   = this.W;
 
@@ -193,7 +201,15 @@ class UI {
       }
     }
 
-    // Sound toggle (top-right corner)
+    // Sound toggle (top-right corner of HUD) — tappable 26×20 area
+    this.soundHudRect = { x: W-28, y: 0, w: 28, h: 20 };
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(W-28, 0, 28, 20);
+    const sndLabel = soundEnabled ? '♪' : '✕';
+    ctx.font = 'bold 11px "Courier New"'; ctx.fillStyle = soundEnabled ? '#aaffaa' : '#aa4444';
+    ctx.textAlign = 'right';
+    ctx.fillText(sndLabel, W-8, 14);
+
     ctx.restore();
 
     this._drawTimerBar(timeLeft, timeMax, crowWarning);
@@ -482,9 +498,10 @@ class UI {
 
     ctx.restore();
 
-    const btnY = panelY + panelH - 76;
-    this.retryBtnRect = this._btn('▶  もういちど', panelX+10, btnY, panelW-20, 30, '#ffcc00', '#000', 13);
-    this.titleBtnRect = this._outlineBtn('タイトルへ', panelX+10, btnY+38, panelW-20, 26, '#aaa', 11);
+    const btnY = panelY + panelH - 92;
+    this.retryBtnRect  = this._btn('▶  もういちど', panelX+10, btnY,    panelW-20, 30, '#ffcc00', '#000', 13);
+    this.titleBtnRect  = this._outlineBtn('タイトルへ',  panelX+10, btnY+38, Math.floor((panelW-24)/2), 24, '#aaa', 10);
+    this.rankingBtnRect = this._outlineBtn('ランキング',  panelX+10+Math.floor((panelW-24)/2)+4, btnY+38, Math.ceil((panelW-24)/2), 24, '#ffdd88', 10);
   }
 
   // ---- Pause ----

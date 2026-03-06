@@ -127,9 +127,6 @@ class Game {
     // Nickname input buffer
     this.nickBuffer = ranking.nickname || '';
 
-    // Previous jump state for landing detection
-    this._prevJumping = false;
-
     this._bindInput();
     this.lastTime = null;
     requestAnimationFrame((t) => this._loop(t));
@@ -240,15 +237,17 @@ class Game {
     }
 
     if (this.state === 'gameover') {
-      if (hit(this.ui.retryBtnRect)) { sound.menuSelect(); this._startGame(); return; }
-      if (hit(this.ui.titleBtnRect)) { sound.menuSelect(); this.state = 'title'; return; }
+      if (hit(this.ui.retryBtnRect))   { sound.menuSelect(); this._startGame(); return; }
+      if (hit(this.ui.titleBtnRect))   { sound.menuSelect(); this.state = 'title'; return; }
+      if (hit(this.ui.rankingBtnRect)) { sound.menuSelect(); this._openRanking(); return; }
       this._startGame(); return;
     }
 
     if (this.state === 'paused') { this.state = 'playing'; return; }
 
-    if (this.state === 'playing' && !this.player.jumping && !this.player.sliding) {
-      this._doJump();
+    if (this.state === 'playing') {
+      if (hit(this.ui.soundHudRect)) { sound.toggle(); return; }
+      if (!this.player.jumping && !this.player.sliding) this._doJump();
     }
   }
 
@@ -331,7 +330,6 @@ class Game {
     this.crowWarning    = false;
     this.notifications  = [];
     this.unlockToast    = null;
-    this._prevJumping   = false;
 
     this.obstacles.reset();
     this._generateBolts(BOLT_POOL);
@@ -444,18 +442,19 @@ class Game {
     }
 
     // Cumulative progress
+    const prevCumulative = charManager.cumulative;
     charManager.addCumulative(this.heightM);
-    this._checkUnlocks();
+    this._checkUnlocks(prevCumulative);
 
     // Submit score
     ranking.submitScore(this.heightM, this.score, charManager.selected);
   }
 
-  _checkUnlocks() {
+  _checkUnlocks(prevCumulative) {
     CHARACTERS.forEach((ch, i) => {
       if (i === 0) return;
-      if (!charManager.isUnlocked(i) && charManager.cumulative >= ch.cost) {
-        // Newly unlocked! (isUnlocked now returns true after addCumulative)
+      // Detect threshold crossing: was locked before, is unlocked now
+      if (prevCumulative < ch.cost && charManager.cumulative >= ch.cost) {
         this.unlockToast = ch.name;
         sound.unlock();
       }
@@ -568,7 +567,7 @@ class Game {
         this.heightM, this.score, this.highScore,
         this.timeLeft, this.timeMax, this.combo,
         this.multiplierTimer, this.MULTIPLIER_DUR,
-        this.crowWarning, this.animTick
+        this.crowWarning, this.animTick, sound.enabled
       );
       for (const n of this.notifications) n.draw(ctx);
     }
