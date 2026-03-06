@@ -597,7 +597,7 @@ class Game {
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {
         this.state = 'gameover';
-        AdMobManager.showOnGameOver();
+        AdMobManager.showOnGameOver(this.heightM);
       }
     }
   }
