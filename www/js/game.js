@@ -728,6 +728,7 @@ class Game {
     this.obstacles.drawEntities(ctx, (y) => this.worldToScreenY(y));
     this._drawPole();
     this._drawBolts();
+    this._drawGoalLine();
     this.obstacles.drawDagashi(ctx, (y) => this.worldToScreenY(y));
     this._drawPlayer();
 
@@ -1087,6 +1088,25 @@ class Game {
         ctx.restore();
       }
     }
+  }
+
+  _drawGoalLine() {
+    if (this.gameMode !== 'stage' || this.stageCleared) return;
+    const goalWorldY = this.stageBoltsGoal * BOLT_SPACING;
+    const sy = this.worldToScreenY(goalWorldY);
+    if (sy < -10 || sy > CANVAS_H + 10) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.strokeStyle = '#ff2200';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(CANVAS_W, sy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff2200';
+    ctx.font = 'bold 12px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.fillText('GOAL', CANVAS_W / 2, sy - 6);
+    ctx.restore();
   }
 
   _drawPlayer() {
