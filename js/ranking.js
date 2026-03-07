@@ -4,13 +4,13 @@
 // Fill in your Firebase project details here to enable online ranking.
 // Leave as-is to use local-only mode (scores stored in localStorage).
 const FIREBASE_CONFIG = {
-  apiKey:            '',
-  authDomain:        '',
-  databaseURL:       '',
-  projectId:         '',
-  storageBucket:     '',
-  messagingSenderId: '',
-  appId:             '',
+  apiKey:            'AIzaSyC6KSz938V6qnCGKE0Uverkj8p5k6z89rE',
+  authDomain:        'telephonepolejump.firebaseapp.com',
+  databaseURL:       'https://telephonepolejump-default-rtdb.firebaseio.com',
+  projectId:         'telephonepolejump',
+  storageBucket:     'telephonepolejump.firebasestorage.app',
+  messagingSenderId: '1006769112628',
+  appId:             '1:1006769112628:web:bffa07dc1f94e5a1fc6c61',
 };
 
 const FIREBASE_ENABLED =
