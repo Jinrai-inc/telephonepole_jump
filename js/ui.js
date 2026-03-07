@@ -218,10 +218,14 @@ class UI {
     this.charBtnRect = this._outlineBtn('👤 キャラ選択', W*0.05, subY, btnW, 26, '#ffddaa', 10);
     this.rankBtnRect = this._outlineBtn('🏆 ランキング', W*0.53, subY, btnW, 26, '#ffddaa', 10);
 
+    // Stage mode button
+    const stageY = subY + 34;
+    this.stageBtnRect = this._outlineBtn('▶ ステージモード', W*0.15, stageY, W*0.7, 26, '#ffcc44', 11);
+
     // Controls hint
     ctx.save();
     ctx.textAlign = 'center'; ctx.font = '9px "Courier New"'; ctx.fillStyle = '#cc9966';
-    ctx.fillText('← →キー / 左右タップ / スワイプ でジャンプ', W/2, subY + 46);
+    ctx.fillText('← →キー / 左右タップ / スワイプ でジャンプ', W/2, stageY + 38);
     ctx.restore();
 
     // Sound toggle
@@ -271,7 +275,7 @@ class UI {
 
   // ---- HUD ----
   drawHUD(height, score, highScore, timeLeft, timeMax, combo,
-          multiplierTimer, multiplierMax, animTick, soundEnabled) {
+          multiplierTimer, multiplierMax, animTick, soundEnabled, stageInfo = null) {
     const ctx = this.ctx;
     const W   = this.W;
 
@@ -289,9 +293,17 @@ class UI {
     ctx.fillStyle = '#ffcc00';
     ctx.fillText(`${score}pt`, 8, 33);
 
-    // Best
-    ctx.fillStyle = '#aaffaa'; ctx.textAlign = 'center';
-    ctx.fillText(`BEST ${highScore}m`, W/2, 17);
+    // Best / Stage info
+    if (stageInfo) {
+      ctx.fillStyle = '#ffcc44'; ctx.textAlign = 'center';
+      ctx.fillText(`STAGE ${stageInfo.stageNum}`, W/2, 17);
+      ctx.fillStyle = '#888'; ctx.font = '9px "Courier New"';
+      ctx.fillText(`${stageInfo.boltIdx}/${stageInfo.boltGoal}ボルト`, W/2, 30);
+      ctx.font = 'bold 13px "Courier New"';
+    } else {
+      ctx.fillStyle = '#aaffaa'; ctx.textAlign = 'center';
+      ctx.fillText(`BEST ${highScore}m`, W/2, 17);
+    }
 
     // Combo
     if (combo > 1) {
@@ -458,12 +470,23 @@ class UI {
       ctx.fillText(ch.nameFull, cx+52, cy+32);
 
       if (!unlocked) {
-        ctx.fillStyle = '#886644';
-        ctx.fillText(`${ch.cost}m で解放`, cx+52, cy+48);
-        // Progress bar
-        const prog = Math.min(1, charManager.cumulative / ch.cost);
-        ctx.fillStyle = '#333'; ctx.fillRect(cx+52, cy+54, cellW-64, 6);
-        ctx.fillStyle = '#ff8822'; ctx.fillRect(cx+52, cy+54, Math.round((cellW-64)*prog), 6);
+        if (ch.cost === Infinity) {
+          // Stage-unlocked character
+          const reqStage = (typeof STAGE_UNLOCK_MAP !== 'undefined') ? STAGE_UNLOCK_MAP[i] : '?';
+          ctx.fillStyle = '#886644';
+          ctx.fillText(`ST${reqStage}クリアで解放`, cx+52, cy+48);
+          if (typeof stageManager !== 'undefined' && reqStage) {
+            const prog = Math.min(1, stageManager.getProgress() / reqStage);
+            ctx.fillStyle = '#333'; ctx.fillRect(cx+52, cy+54, cellW-64, 6);
+            ctx.fillStyle = '#4488ff'; ctx.fillRect(cx+52, cy+54, Math.round((cellW-64)*prog), 6);
+          }
+        } else {
+          ctx.fillStyle = '#886644';
+          ctx.fillText(`${ch.cost}m で解放`, cx+52, cy+48);
+          const prog = Math.min(1, charManager.cumulative / ch.cost);
+          ctx.fillStyle = '#333'; ctx.fillRect(cx+52, cy+54, cellW-64, 6);
+          ctx.fillStyle = '#ff8822'; ctx.fillRect(cx+52, cy+54, Math.round((cellW-64)*prog), 6);
+        }
       } else if (selected) {
         ctx.fillStyle = '#ffcc00';
         ctx.fillText('▶ 選択中', cx+52, cy+48);
@@ -649,6 +672,133 @@ class UI {
     this.retryBtnRect  = this._btn('▶  もういちど', panelX+10, btnY,    panelW-20, 30, '#ffcc00', '#000', 13);
     this.titleBtnRect  = this._outlineBtn('タイトルへ',  panelX+10, btnY+38, Math.floor((panelW-24)/2), 24, '#aaa', 10);
     this.rankingBtnRect = this._outlineBtn('ランキング',  panelX+10+Math.floor((panelW-24)/2)+4, btnY+38, Math.ceil((panelW-24)/2), 24, '#ffdd88', 10);
+  }
+
+  // ---- Stage Select Screen ----
+  drawStageSelect(progress, currentStage, animTick) {
+    const ctx = this.ctx;
+    const W = this.W, H = this.H;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#0a0520'); grad.addColorStop(1, '#201040');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.font = 'bold 15px "Courier New"'; ctx.fillStyle = '#ffcc00'; ctx.textAlign = 'center';
+    ctx.fillText('ステージ選択', W/2, 28);
+    ctx.restore();
+
+    this.backBtnRect    = this._outlineBtn('◀ もどる',     10,    8, 82, 24, '#aaaaaa', 10);
+    this.endlessBtnRect = this._outlineBtn('エンドレス', W-96,    8, 86, 24, '#ffddaa', 10);
+
+    const themes = ['田舎','都市','ジャングル','海底','砂漠','雪山','火山','宇宙','魔界','天界'];
+    const tierColors = [
+      '#337722','#3366aa','#226600','#004488',
+      '#886600','#336688','#882200','#111166','#660022','#6666bb'
+    ];
+
+    const gridX = 8, gridY = 42;
+    const cols = 10, rows = 10;
+    const cellW = Math.floor((W - gridX * 2) / cols);
+    const cellH = Math.floor((H - gridY - 56) / rows);
+
+    this._stageSelectRects = [];
+
+    for (let s = 1; s <= 100; s++) {
+      const i      = s - 1;
+      const col    = i % cols;
+      const row    = Math.floor(i / cols);
+      const tier   = Math.floor(i / 10);
+      const cx     = gridX + col * cellW;
+      const cy     = gridY + row * cellH;
+      const available = s <= progress + 1;
+      const completed = s <= progress;
+      const isSelected = s === currentStage;
+      const blink = Math.floor(animTick / 20) % 2 === 0;
+
+      ctx.fillStyle = completed ? '#1a4a22'
+        : (available ? (blink ? '#554400' : '#332200') : '#111');
+      ctx.fillRect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+
+      ctx.strokeStyle = isSelected ? '#ffcc00' : (completed ? '#33aa44' : (available ? '#776600' : '#333'));
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.strokeRect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+
+      ctx.save();
+      ctx.font = `${cellH < 30 ? 7 : 8}px "Courier New"`;
+      ctx.fillStyle = completed ? '#44ff66' : (available ? '#ffcc44' : '#444');
+      ctx.textAlign = 'center';
+      ctx.fillText(s, cx + cellW / 2, cy + cellH / 2 + 4);
+      ctx.restore();
+
+      this._stageSelectRects.push({
+        x: cx + 1, y: cy + 1, w: cellW - 2, h: cellH - 2,
+        stage: s, available
+      });
+    }
+
+    // Current stage theme info
+    const tier = Math.floor((currentStage - 1) / 10);
+    ctx.save();
+    ctx.font = '9px "Courier New"'; ctx.fillStyle = '#aaaaaa'; ctx.textAlign = 'center';
+    ctx.fillText(`ST${currentStage}: ${themes[tier]}  ／  進捗 ${progress}/100`, W/2, H - 36);
+    ctx.fillStyle = '#555';
+    ctx.fillText('タップでステージ選択', W/2, H - 22);
+    ctx.restore();
+  }
+
+  // ---- Stage Complete Screen ----
+  drawStageComplete(stageNum, score, animTick, unlockToast) {
+    const ctx = this.ctx;
+    const W = this.W, H = this.H;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
+
+    const panelX = W * 0.07, panelW = W * 0.86;
+    const panelY = H * 0.17, panelH = H * 0.64;
+    this._panel(panelX, panelY, panelW, panelH, '#ffcc00');
+
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    const blink = Math.floor(animTick / 14) % 2 === 0;
+    ctx.font = 'bold 22px "Courier New"';
+    ctx.fillStyle = blink ? '#ffff55' : '#ffcc00';
+    ctx.fillText('STAGE CLEAR!', W / 2, panelY + 36);
+
+    ctx.font = 'bold 13px "Courier New"'; ctx.fillStyle = '#ffffff';
+    ctx.fillText(`ステージ ${stageNum} クリア！`, W / 2, panelY + 58);
+
+    // Stars
+    ctx.font = 'bold 24px "Courier New"'; ctx.fillStyle = '#ffcc00';
+    ['★', '★', '★'].forEach((s, i) => ctx.fillText(s, W / 2 - 28 + i * 28, panelY + 88));
+
+    ctx.font = 'bold 12px "Courier New"'; ctx.fillStyle = '#ffcc00';
+    ctx.fillText(`スコア: ${score}pt`, W / 2, panelY + 114);
+
+    if (unlockToast) {
+      ctx.fillStyle = '#00ffaa';
+      ctx.font = 'bold 11px "Courier New"';
+      ctx.fillText(`キャラ解放: ${unlockToast}！`, W / 2, panelY + 136);
+    }
+
+    if (stageNum < 100) {
+      ctx.fillStyle = '#aaaaaa'; ctx.font = '10px "Courier New"';
+      ctx.fillText(`次: ステージ ${stageNum + 1}`, W / 2, panelY + 158);
+    } else {
+      ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 12px "Courier New"';
+      ctx.fillText('全ステージ制覇！', W / 2, panelY + 158);
+    }
+
+    ctx.restore();
+
+    const btnY = panelY + panelH - 86;
+    if (stageNum < 100) {
+      this.nextStageBtnRect = this._btn('▶ 次のステージ', panelX + 10, btnY, panelW - 20, 30, '#ffcc00', '#000', 12);
+    } else {
+      this.nextStageBtnRect = null;
+    }
+    this.titleBtnRect = this._outlineBtn('タイトルへ', panelX + 10, btnY + 38, panelW - 20, 24, '#aaa', 10);
   }
 
   // ---- Pause ----
