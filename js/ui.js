@@ -197,35 +197,35 @@ class UI {
     }
     ctx.restore();
 
-    // START button
+    // START button (endless mode)
     const blink = Math.floor(animTick/28) % 2 === 0;
-    const sY = H * 0.72;
+    const sY = H * 0.69;
     if (blink) {
-      this.startBtnRect = this._btn('▶  START', W*0.2, sY, W*0.6, 36, '#ffcc44', '#3a1a00', 16);
+      this.startBtnRect = this._btn('▶  エンドレスモード', W*0.1, sY, W*0.8, 36, '#ffcc44', '#3a1a00', 14);
     } else {
       ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
-      ctx.strokeRect(W*0.2, sY, W*0.6, 36);
+      ctx.strokeRect(W*0.1, sY, W*0.8, 36);
       ctx.save();
-      ctx.font = 'bold 16px "Courier New"'; ctx.fillStyle = '#ffcc44'; ctx.textAlign = 'center';
-      ctx.fillText('▶  START', W/2, sY + 24);
+      ctx.font = 'bold 14px "Courier New"'; ctx.fillStyle = '#ffcc44'; ctx.textAlign = 'center';
+      ctx.fillText('▶  エンドレスモード', W/2, sY + 24);
       ctx.restore();
-      this.startBtnRect = { x: W*0.2, y: sY, w: W*0.6, h: 36 };
+      this.startBtnRect = { x: W*0.1, y: sY, w: W*0.8, h: 36 };
     }
 
+    // Stage mode button
+    const stageY = sY + 44;
+    this.stageBtnRect = this._outlineBtn('▶  ステージモード', W*0.1, stageY, W*0.8, 36, '#ffcc44', 14);
+
     // Sub-buttons row
-    const subY = sY + 44;
+    const subY = stageY + 44;
     const btnW = W * 0.42;
     this.charBtnRect = this._outlineBtn('👤 キャラ選択', W*0.05, subY, btnW, 26, '#ffddaa', 10);
     this.rankBtnRect = this._outlineBtn('🏆 ランキング', W*0.53, subY, btnW, 26, '#ffddaa', 10);
 
-    // Stage mode button
-    const stageY = subY + 34;
-    this.stageBtnRect = this._outlineBtn('▶ ステージモード', W*0.15, stageY, W*0.7, 26, '#ffcc44', 11);
-
     // Controls hint
     ctx.save();
     ctx.textAlign = 'center'; ctx.font = '9px "Courier New"'; ctx.fillStyle = '#cc9966';
-    ctx.fillText('← →キー / 左右タップ / スワイプ でジャンプ', W/2, stageY + 38);
+    ctx.fillText('← →キー / 左右タップ / スワイプ でジャンプ', W/2, subY + 36);
     ctx.restore();
 
     // Sound toggle
@@ -688,63 +688,102 @@ class UI {
     ctx.fillText('ステージ選択', W/2, 28);
     ctx.restore();
 
-    this.backBtnRect    = this._outlineBtn('◀ もどる',     10,    8, 82, 24, '#aaaaaa', 10);
-    this.endlessBtnRect = this._outlineBtn('エンドレス', W-96,    8, 86, 24, '#ffddaa', 10);
-
-    const themes = ['田舎','都市','ジャングル','海底','砂漠','雪山','火山','宇宙','魔界','天界'];
-    const tierColors = [
-      '#337722','#3366aa','#226600','#004488',
-      '#886600','#336688','#882200','#111166','#660022','#6666bb'
-    ];
-
-    const gridX = 8, gridY = 42;
-    const cols = 10, rows = 10;
-    const cellW = Math.floor((W - gridX * 2) / cols);
-    const cellH = Math.floor((H - gridY - 56) / rows);
+    this.backBtnRect    = this._outlineBtn('◀ もどる',   10,    8, 82, 24, '#aaaaaa', 10);
+    this.endlessBtnRect = this._outlineBtn('エンドレス', W-96,  8, 86, 24, '#ffddaa', 10);
 
     this._stageSelectRects = [];
 
-    for (let s = 1; s <= 100; s++) {
-      const i      = s - 1;
-      const col    = i % cols;
-      const row    = Math.floor(i / cols);
-      const tier   = Math.floor(i / 10);
-      const cx     = gridX + col * cellW;
-      const cy     = gridY + row * cellH;
-      const available = s <= progress + 1;
-      const completed = s <= progress;
-      const isSelected = s === currentStage;
+    const themes = ['田舎','都市','ジャングル','海底','砂漠','雪山','火山','宇宙','魔界','天界'];
+    const themeColors = [
+      '#226600','#223355','#0a4a0a','#003366',
+      '#885500','#336688','#660000','#000033','#3a0000','#aaccff'
+    ];
+
+    let yPos = 42;
+
+    // ---- Next challenge button ----
+    if (progress < 100) {
+      const nextStage = progress + 1;
+      const tier = Math.floor((nextStage - 1) / 10);
       const blink = Math.floor(animTick / 20) % 2 === 0;
+      const btnH = 58;
 
-      ctx.fillStyle = completed ? '#1a4a22'
-        : (available ? (blink ? '#554400' : '#332200') : '#111');
-      ctx.fillRect(cx + 1, cy + 1, cellW - 2, cellH - 2);
-
-      ctx.strokeStyle = isSelected ? '#ffcc00' : (completed ? '#33aa44' : (available ? '#776600' : '#333'));
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.strokeRect(cx + 1, cy + 1, cellW - 2, cellH - 2);
+      ctx.fillStyle = blink ? '#553300' : '#3a2200';
+      ctx.fillRect(10, yPos, W - 20, btnH);
+      ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 2;
+      ctx.strokeRect(10, yPos, W - 20, btnH);
 
       ctx.save();
-      ctx.font = `${cellH < 30 ? 7 : 8}px "Courier New"`;
-      ctx.fillStyle = completed ? '#44ff66' : (available ? '#ffcc44' : '#444');
       ctx.textAlign = 'center';
-      ctx.fillText(s, cx + cellW / 2, cy + cellH / 2 + 4);
+      ctx.font = 'bold 15px "Courier New"'; ctx.fillStyle = '#ffcc44';
+      ctx.fillText(`▶  ステージ ${nextStage} に挑戦！`, W / 2, yPos + 24);
+      ctx.font = '10px "Courier New"'; ctx.fillStyle = '#aaaaaa';
+      ctx.fillText(`テーマ: ${themes[tier]}　タイム: ${(2.00 - 0.14 * tier).toFixed(2)}s`, W / 2, yPos + 44);
       ctx.restore();
 
-      this._stageSelectRects.push({
-        x: cx + 1, y: cy + 1, w: cellW - 2, h: cellH - 2,
-        stage: s, available
-      });
+      this._stageSelectRects.push({ x: 10, y: yPos, w: W - 20, h: btnH, stage: nextStage, available: true });
+      yPos += btnH + 8;
+    } else {
+      // All 100 cleared
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.font = 'bold 13px "Courier New"'; ctx.fillStyle = '#ffcc00';
+      ctx.fillText('🏆 全100ステージ制覇！', W / 2, yPos + 20);
+      ctx.restore();
+      yPos += 36;
     }
 
-    // Current stage theme info
-    const tier = Math.floor((currentStage - 1) / 10);
-    ctx.save();
-    ctx.font = '9px "Courier New"'; ctx.fillStyle = '#aaaaaa'; ctx.textAlign = 'center';
-    ctx.fillText(`ST${currentStage}: ${themes[tier]}  ／  進捗 ${progress}/100`, W/2, H - 36);
-    ctx.fillStyle = '#555';
-    ctx.fillText('タップでステージ選択', W/2, H - 22);
-    ctx.restore();
+    // ---- Completed stages grid ----
+    if (progress > 0) {
+      ctx.save();
+      ctx.font = 'bold 10px "Courier New"'; ctx.fillStyle = '#888'; ctx.textAlign = 'left';
+      ctx.fillText(`クリア済み  ${progress}/100`, 12, yPos + 14);
+      ctx.restore();
+      yPos += 20;
+
+      const cols = 8;
+      const cellSize = Math.floor((W - 16) / cols);
+      const maxRows = Math.floor((H - yPos - 24) / cellSize);
+
+      // Show most recent stages last (or show all if they fit)
+      const startStage = Math.max(1, progress - cols * maxRows + 1);
+
+      for (let s = startStage; s <= progress; s++) {
+        const i = s - startStage;
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const tier = Math.floor((s - 1) / 10);
+        const cx = 8 + col * cellSize;
+        const cy = yPos + row * cellSize;
+        const isSelected = s === currentStage;
+
+        if (cy + cellSize > H - 20) break;
+
+        ctx.fillStyle = isSelected ? '#1a6633' : themeColors[tier];
+        ctx.fillRect(cx + 1, cy + 1, cellSize - 2, cellSize - 2);
+        ctx.strokeStyle = isSelected ? '#ffcc00' : '#33aa55';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(cx + 1, cy + 1, cellSize - 2, cellSize - 2);
+
+        ctx.save();
+        ctx.font = '8px "Courier New"'; ctx.fillStyle = '#44ff88'; ctx.textAlign = 'center';
+        ctx.fillText(s, cx + cellSize / 2, cy + cellSize / 2 + 4);
+        ctx.restore();
+
+        this._stageSelectRects.push({ x: cx + 1, y: cy + 1, w: cellSize - 2, h: cellSize - 2, stage: s, available: true });
+      }
+
+      if (startStage > 1) {
+        ctx.save();
+        ctx.font = '9px "Courier New"'; ctx.fillStyle = '#666'; ctx.textAlign = 'center';
+        ctx.fillText(`(最近の ${cols * maxRows} ステージを表示)`, W / 2, H - 10);
+        ctx.restore();
+      }
+    } else {
+      ctx.save();
+      ctx.font = '11px "Courier New"'; ctx.fillStyle = '#555'; ctx.textAlign = 'center';
+      ctx.fillText('クリアするとここに記録されます', W / 2, H * 0.72);
+      ctx.restore();
+    }
   }
 
   // ---- Stage Complete Screen ----
