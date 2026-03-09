@@ -20,14 +20,6 @@ workflows:
       - name: Capacitor sync
         script: npx cap sync ios
 
-      - name: Patch AdMob podspec
-        script: |
-          # Remove static_framework = true from AdMob podspec.
-          # use_frameworks! :linkage => :static already makes all pods static;
-          # having both causes duplicate symbol '_OBJC_CLASS_$_AdMobPlugin' at link time.
-          sed -i '' "s/s\.static_framework = true//" \
-            node_modules/@capacitor-community/admob/CapacitorCommunityAdmob.podspec
-
       - name: Install CocoaPods
         script: |
           cd ios/App
