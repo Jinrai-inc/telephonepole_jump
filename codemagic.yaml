@@ -3,9 +3,6 @@ workflows:
     name: iOS App Store Distribution
     max_build_duration: 60
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.jinraiinc.telephonepolejump
       vars:
         BUNDLE_ID: com.jinraiinc.telephonepolejump
         XCODE_PROJECT: ios/App/App.xcodeproj
@@ -28,6 +25,19 @@ workflows:
           cd ios/App
           pod install
 
+      - name: Set up keychain and code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --type IOS_APP_STORE \
+            "$BUNDLE_ID" \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
       - name: Set build version
         script: |
           BUILD_NUMBER=$(($(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" \
@@ -38,7 +48,6 @@ workflows:
 
       - name: Build iOS
         script: |
-          xcode-project use-profiles
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
