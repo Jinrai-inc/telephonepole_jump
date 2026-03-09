@@ -28,6 +28,14 @@ workflows:
       - name: Set up keychain and code signing
         script: |
           keychain initialize
+
+          # Import distribution certificate from environment variable
+          # Add CERTIFICATE_P12_BASE64 and CERTIFICATE_PRIVATE_KEY_PASSWORD to ios_credentials group
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > /tmp/cert.p12
+          keychain add-certificates \
+            --certificate /tmp/cert.p12 \
+            --certificate-password "$CERTIFICATE_PRIVATE_KEY_PASSWORD"
+
           app-store-connect fetch-signing-files \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
@@ -35,16 +43,14 @@ workflows:
             --type IOS_APP_STORE \
             "$BUNDLE_ID" \
             --create
-          keychain add-certificates
 
-          PROFILE=$(find ~/Library/MobileDevice/Provisioning\ Profiles -name "*.mobileprovision" | head -1)
-          security cms -D -i "$PROFILE" > /tmp/profile.plist
-          TEAM_ID=$(plutil -extract TeamIdentifier.0 raw /tmp/profile.plist)
-          echo "Team ID: $TEAM_ID"
+          PROFILE=$(find "$HOME/Library/MobileDevice/Provisioning Profiles" -name "*.mobileprovision" | head -1)
+          if [ -z "$PROFILE" ]; then
+            echo "ERROR: No provisioning profile found"
+            exit 1
+          fi
 
-          xcode-project use-profiles \
-            --project ios/App/App.xcodeproj \
-            --team-id "$TEAM_ID"
+          xcode-project use-profiles --project ios/App/App.xcodeproj
 
       - name: Set build version
         script: |
