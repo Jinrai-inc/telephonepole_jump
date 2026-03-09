@@ -17,19 +17,6 @@ target 'App' do
   capacitor_pods
 end
 
-pre_install do |installer|
-  # CapacitorCommunityAdmob podspec sets static_framework = true, but
-  # use_frameworks! :linkage => :static already makes all pods static.
-  # Having both causes duplicate symbols at link time, so we override here.
-  installer.pod_targets.each do |pod|
-    if pod.name == 'CapacitorCommunityAdmob'
-      def pod.static_framework?
-        false
-      end
-    end
-  end
-end
-
 post_install do |installer|
   assertDeploymentTarget(installer)
 end
