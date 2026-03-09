@@ -25,7 +25,7 @@ workflows:
           # Remove static_framework = true from AdMob podspec.
           # use_frameworks! :linkage => :static already makes all pods static;
           # having both causes duplicate symbol '_OBJC_CLASS_$_AdMobPlugin' at link time.
-          sed -i "s/s\.static_framework = true//" \
+          sed -i '' "s/s\.static_framework = true//" \
             node_modules/@capacitor-community/admob/CapacitorCommunityAdmob.podspec
 
       - name: Install CocoaPods
