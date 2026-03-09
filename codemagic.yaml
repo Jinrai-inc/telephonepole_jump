@@ -36,8 +36,15 @@ workflows:
             "$BUNDLE_ID" \
             --create
           keychain add-certificates
+
+          PROFILE=$(find ~/Library/MobileDevice/Provisioning\ Profiles -name "*.mobileprovision" | head -1)
+          security cms -D -i "$PROFILE" > /tmp/profile.plist
+          TEAM_ID=$(plutil -extract TeamIdentifier.0 raw /tmp/profile.plist)
+          echo "Team ID: $TEAM_ID"
+
           xcode-project use-profiles \
-            --project ios/App/App.xcodeproj
+            --project ios/App/App.xcodeproj \
+            --team-id "$TEAM_ID"
 
       - name: Set build version
         script: |
