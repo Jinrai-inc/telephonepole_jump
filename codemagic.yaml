@@ -29,25 +29,26 @@ workflows:
         script: |
           keychain initialize
 
-          # Generate a fresh certificate private key for this build
-          CERT_KEY=$(openssl genrsa 2048 2>/dev/null)
-
           # Revoke existing iOS Distribution certificates to free up the slot
-          app-store-connect certificates list \
+          # Collect IDs first (avoid subshell issue with | while)
+          CERT_IDS=$(app-store-connect certificates list \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
             --type IOS_DISTRIBUTION \
             --json 2>/dev/null \
-          | python3 -c "import sys,json;[print(c['id'] if isinstance(c,dict) else c) for c in json.load(sys.stdin) or []]" \
-          | while read -r cert_id; do
-            [ -z "$cert_id" ] && continue
+          | python3 -c "import sys,json; print('\n'.join(c['id'] for c in (json.load(sys.stdin) or []) if isinstance(c,dict) and 'id' in c))" 2>/dev/null || true)
+
+          for cert_id in $CERT_IDS; do
             echo "Revoking certificate: $cert_id"
             app-store-connect certificates revoke "$cert_id" \
               --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
               --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
               --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" || true
           done
+
+          # Generate a fresh certificate private key for this build
+          CERT_KEY=$(openssl genrsa 2048 2>/dev/null)
 
           # Use --certificate-key so the tool creates a CSR from our key,
           # avoiding "Cannot save Signing Certificates without certificate private key"
