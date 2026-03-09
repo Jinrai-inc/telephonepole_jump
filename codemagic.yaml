@@ -31,7 +31,25 @@ workflows:
 
           # Revoke existing iOS Distribution certificates (private key unavailable)
           # so that fetch-signing-files --create can generate a fresh one
-          python3 scripts/revoke_certificates.py
+          app-store-connect certificates list \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --type IOS_DISTRIBUTION \
+            --json 2>/dev/null \
+          | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for c in (data if isinstance(data, list) else []):
+    print(c['id'] if isinstance(c, dict) else c)
+" | while read -r cert_id; do
+            [ -z "$cert_id" ] && continue
+            echo "Revoking certificate: $cert_id"
+            app-store-connect certificates revoke "$cert_id" \
+              --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+              --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+              --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" || true
+          done
 
           app-store-connect fetch-signing-files \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
