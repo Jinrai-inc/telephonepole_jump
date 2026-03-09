@@ -37,12 +37,8 @@ workflows:
             --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
             --type IOS_DISTRIBUTION \
             --json 2>/dev/null \
-          | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for c in (data if isinstance(data, list) else []):
-    print(c['id'] if isinstance(c, dict) else c)
-" | while read -r cert_id; do
+          | python3 -c "import sys,json;[print(c['id'] if isinstance(c,dict) else c) for c in json.load(sys.stdin) or []]" \
+          | while read -r cert_id; do
             [ -z "$cert_id" ] && continue
             echo "Revoking certificate: $cert_id"
             app-store-connect certificates revoke "$cert_id" \
