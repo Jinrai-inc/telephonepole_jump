@@ -29,8 +29,10 @@ workflows:
         script: |
           keychain initialize
 
-          # Revoke existing iOS Distribution certificates (private key unavailable)
-          # so that fetch-signing-files --create can generate a fresh one
+          # Generate a fresh certificate private key for this build
+          CERT_KEY=$(openssl genrsa 2048 2>/dev/null)
+
+          # Revoke existing iOS Distribution certificates to free up the slot
           app-store-connect certificates list \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
@@ -47,10 +49,13 @@ workflows:
               --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" || true
           done
 
+          # Use --certificate-key so the tool creates a CSR from our key,
+          # avoiding "Cannot save Signing Certificates without certificate private key"
           app-store-connect fetch-signing-files \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --certificate-key "$CERT_KEY" \
             --type IOS_APP_STORE \
             "$BUNDLE_ID" \
             --create
