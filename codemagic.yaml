@@ -40,10 +40,12 @@ workflows:
 
       - name: Set build version
         script: |
-          BUILD_NUMBER=$(($(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" \
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY") + 1))
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" 2>/dev/null || echo "0")
+          BUILD_NUMBER=$((LATEST + 1))
+          cd ios/App
           agvtool new-version -all $BUILD_NUMBER
 
       - name: Build iOS
