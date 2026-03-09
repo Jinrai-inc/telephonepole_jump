@@ -40,7 +40,7 @@ workflows:
             | python3 -c "import sys,json; print('\n'.join(c['id'] for c in (json.load(sys.stdin) or []) if isinstance(c,dict) and 'id' in c))" 2>/dev/null || true)
             for cert_id in $CERT_IDS; do
               echo "Revoking $CERT_TYPE certificate: $cert_id"
-              app-store-connect certificates revoke "$cert_id" \
+              app-store-connect certificates delete "$cert_id" \
                 --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
                 --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
                 --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" || true
