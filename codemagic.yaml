@@ -62,7 +62,13 @@ workflows:
 
           keychain add-certificates
 
-          PROFILE=$(find "$HOME/Library/MobileDevice/Provisioning Profiles" -name "*.mobileprovision" | head -1)
+          # Copy profiles to the MobileDevice location where xcode-project use-profiles expects them
+          MOBILE_PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$MOBILE_PROFILES"
+          find "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" -name "*.mobileprovision" \
+            -exec cp {} "$MOBILE_PROFILES/" \; 2>/dev/null || true
+
+          PROFILE=$(find "$MOBILE_PROFILES" -name "*.mobileprovision" | head -1)
           if [ -z "$PROFILE" ]; then
             echo "ERROR: No provisioning profile found"
             exit 1
