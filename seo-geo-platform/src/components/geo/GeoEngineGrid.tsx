@@ -6,10 +6,10 @@ import { Eye, EyeOff } from "lucide-react";
 interface Check {
   engine: string;
   isMentioned: boolean;
-  mentionType: string;
-  sentiment: string;
-  shareOfVoice: number;
-  checkedAt: Date;
+  mentionType: string | null;
+  sentiment: string | null;
+  shareOfVoice: number | null;
+  checkedAt: Date | string;
 }
 
 const engineMeta: Record<string, { label: string; color: string; icon: string }> = {
@@ -42,7 +42,7 @@ export function GeoEngineGrid({ checks }: GeoEngineGridProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {checks.map((check) => {
         const meta = engineMeta[check.engine] || { label: check.engine, color: "#666", icon: "?" };
-        const sentMeta = sentimentLabels[check.sentiment] || sentimentLabels.NONE;
+        const sentMeta = sentimentLabels[check.sentiment ?? ""] || sentimentLabels.NONE;
 
         return (
           <div
@@ -76,7 +76,7 @@ export function GeoEngineGrid({ checks }: GeoEngineGridProps) {
               <div className="flex justify-between">
                 <span className="text-text-dim">言及タイプ</span>
                 <span className={check.isMentioned ? (check.mentionType === "DIRECT" ? "text-accent font-medium" : "text-orange") : "text-text-dim"}>
-                  {mentionLabels[check.mentionType] || check.mentionType}
+                  {mentionLabels[check.mentionType ?? ""] || check.mentionType || "-"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -85,7 +85,7 @@ export function GeoEngineGrid({ checks }: GeoEngineGridProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-text-dim">シェア</span>
-                <span className="text-text font-medium">{check.shareOfVoice}%</span>
+                <span className="text-text font-medium">{check.shareOfVoice ?? 0}%</span>
               </div>
 
               {/* Share bar */}
@@ -93,7 +93,7 @@ export function GeoEngineGrid({ checks }: GeoEngineGridProps) {
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${check.shareOfVoice}%`,
+                    width: `${check.shareOfVoice ?? 0}%`,
                     backgroundColor: check.isMentioned ? meta.color : "#5C6F82",
                   }}
                 />

@@ -1,32 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { KeywordAddModal } from "@/components/keywords/KeywordAddModal";
 import { ArrowUp, ArrowDown, Minus, Plus, Trash2, Search, Bot } from "lucide-react";
-
-// Demo data until tRPC is wired to a real DB
-const DEMO_KEYWORDS = [
-  { id: "1", keyword: "SEO対策 やり方", searchVolume: 8100, keywordDifficulty: 42, currentPosition: 5, bestPosition: 3, previousPosition: 7, geoScore: 72, searchIntent: "INFORMATIONAL" as const },
-  { id: "2", keyword: "GEO対策とは", searchVolume: 1900, keywordDifficulty: 18, currentPosition: 3, bestPosition: 2, previousPosition: 3, geoScore: 85, searchIntent: "INFORMATIONAL" as const },
-  { id: "3", keyword: "検索順位チェックツール", searchVolume: 6600, keywordDifficulty: 55, currentPosition: 12, bestPosition: 8, previousPosition: 9, geoScore: 45, searchIntent: "COMMERCIAL" as const },
-  { id: "4", keyword: "AI検索 対策", searchVolume: 2400, keywordDifficulty: 22, currentPosition: 8, bestPosition: 6, previousPosition: 11, geoScore: 68, searchIntent: "INFORMATIONAL" as const },
-  { id: "5", keyword: "SEOツール 比較", searchVolume: 4400, keywordDifficulty: 65, currentPosition: 18, bestPosition: 15, previousPosition: 16, geoScore: 30, searchIntent: "COMMERCIAL" as const },
-  { id: "6", keyword: "コンテンツSEO", searchVolume: 3200, keywordDifficulty: 38, currentPosition: 7, bestPosition: 4, previousPosition: 8, geoScore: 55, searchIntent: "INFORMATIONAL" as const },
-  { id: "7", keyword: "LLMO 対策", searchVolume: 880, keywordDifficulty: 12, currentPosition: 2, bestPosition: 1, previousPosition: 2, geoScore: 90, searchIntent: "INFORMATIONAL" as const },
-  { id: "8", keyword: "Ahrefs 代替", searchVolume: 1300, keywordDifficulty: 48, currentPosition: 25, bestPosition: 20, previousPosition: 22, geoScore: 20, searchIntent: "COMMERCIAL" as const },
-];
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
 type SortKey = "keyword" | "searchVolume" | "currentPosition" | "geoScore" | "keywordDifficulty";
 
 export default function KeywordsPage() {
-  const [keywords, setKeywords] = useState(DEMO_KEYWORDS);
+  const { projectId } = useProject();
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("currentPosition");
   const [sortAsc, setSortAsc] = useState(true);
+
+  const utils = trpc.useUtils();
+  const keywordsQuery = trpc.keywords.getAll.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+  const createMutation = trpc.keywords.create.useMutation({
+    onSuccess: () => utils.keywords.getAll.invalidate(),
+  });
+  const deleteMutation = trpc.keywords.delete.useMutation({
+    onSuccess: () => utils.keywords.getAll.invalidate(),
+  });
+
+  const keywords = keywordsQuery.data ?? [];
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -37,35 +41,28 @@ export default function KeywordsPage() {
     }
   };
 
-  const filtered = keywords
-    .filter((kw) => kw.keyword.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      const aVal = a[sortKey] ?? 999;
-      const bVal = b[sortKey] ?? 999;
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      }
-      return sortAsc ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
-    });
+  const filtered = useMemo(() =>
+    keywords
+      .filter((kw) => kw.keyword.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => {
+        const aVal = a[sortKey] ?? 999;
+        const bVal = b[sortKey] ?? 999;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        }
+        return sortAsc ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+      }),
+    [keywords, search, sortKey, sortAsc]
+  );
 
   const handleAdd = (kw: { keyword: string; targetUrl?: string }) => {
-    const newKw = {
-      id: crypto.randomUUID(),
-      keyword: kw.keyword,
-      searchVolume: null as unknown as number,
-      keywordDifficulty: null as unknown as number,
-      currentPosition: null as unknown as number,
-      bestPosition: null as unknown as number,
-      previousPosition: null as unknown as number,
-      geoScore: null as unknown as number,
-      searchIntent: "INFORMATIONAL" as const,
-    };
-    setKeywords([newKw, ...keywords]);
+    if (!projectId) return;
+    createMutation.mutate({ projectId, keyword: kw.keyword, targetUrl: kw.targetUrl });
     setShowModal(false);
   };
 
   const handleDelete = (id: string) => {
-    setKeywords(keywords.filter((kw) => kw.id !== id));
+    deleteMutation.mutate({ id });
   };
 
   const intentColors: Record<string, "blue" | "orange" | "purple" | "green"> = {

@@ -5,14 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Plus, PenTool, FileText, CheckCircle, Clock, Eye } from "lucide-react";
-
-const DEMO_ARTICLES = [
-  { id: "1", title: "GEO対策とは？SEOとの違いと2026年の最新動向", targetKeyword: "GEO対策とは", status: "PUBLISHED", wordCount: 4200, seoScore: 88, geoScore: 75, createdAt: "2026-02-15", publishedAt: "2026-02-20" },
-  { id: "2", title: "AI Overview対策。Googleの生成AI検索で引用されるには", targetKeyword: "AI Overview 対策", status: "REVIEWING", wordCount: 3800, seoScore: 82, geoScore: 70, createdAt: "2026-02-22", publishedAt: null },
-  { id: "3", title: "SEOツール比較2026年版。料金・機能・GEO対応を一覧表で整理", targetKeyword: "SEOツール 比較", status: "WRITING", wordCount: 2100, seoScore: null, geoScore: null, createdAt: "2026-03-01", publishedAt: null },
-  { id: "4", title: "LLMOとは？SEO会社が今すぐ始めるべきAI検索対策", targetKeyword: "LLMO とは", status: "PROOFREADING", wordCount: 3500, seoScore: 78, geoScore: 65, createdAt: "2026-03-03", publishedAt: null },
-  { id: "5", title: "検索順位チェックツール比較。GEO対応のクラウド型が主流", targetKeyword: "検索順位チェックツール", status: "DRAFT", wordCount: 0, seoScore: null, geoScore: null, createdAt: "2026-03-08", publishedAt: null },
-];
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
 const statusConfig: Record<string, { label: string; color: "accent" | "blue" | "orange" | "purple" | "dim"; icon: React.ReactNode }> = {
   DRAFT: { label: "下書き", color: "dim", icon: <FileText size={12} /> },
@@ -23,17 +17,44 @@ const statusConfig: Record<string, { label: string; color: "accent" | "blue" | "
 };
 
 export default function ArticlesPage() {
+  const { projectId } = useProject();
   const [filter, setFilter] = useState<string>("ALL");
 
+  const articlesQuery = trpc.articles.getAll.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+  const createMutation = trpc.articles.create.useMutation({
+    onSuccess: () => articlesQuery.refetch(),
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawArticles = (articlesQuery.data ?? []) as any[];
+  const articles = rawArticles.map((a) => ({
+    id: a.id as string,
+    title: a.title as string,
+    targetKeyword: a.targetKeyword as string | null,
+    status: a.status as string,
+    wordCount: (a.wordCount ?? 0) as number,
+    seoScore: a.seoScore ? Number(a.seoScore) : null,
+    geoScore: a.geoScore ? Number(a.geoScore) : null,
+    createdAt: new Date(a.createdAt).toISOString().split("T")[0],
+    publishedAt: a.publishedAt ? new Date(a.publishedAt).toISOString().split("T")[0] : null,
+  }));
+
   const filtered = filter === "ALL"
-    ? DEMO_ARTICLES
-    : DEMO_ARTICLES.filter((a) => a.status === filter);
+    ? articles
+    : articles.filter((a) => a.status === filter);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">記事作成</h1>
-        <Button>
+        <Button onClick={() => {
+          if (!projectId) return;
+          const title = prompt("記事タイトルを入力してください");
+          if (title) createMutation.mutate({ projectId, title });
+        }}>
           <Plus size={16} className="mr-1.5" />
           新規記事
         </Button>

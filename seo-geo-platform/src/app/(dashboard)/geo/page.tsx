@@ -8,79 +8,25 @@ import { GeoEngineGrid } from "@/components/geo/GeoEngineGrid";
 import { GeoScoreChart } from "@/components/geo/GeoScoreChart";
 import { Bot, Eye, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
-// Demo data
 const AI_ENGINES = ["ChatGPT", "Gemini", "Perplexity", "Copilot", "Claude"] as const;
 
-const DEMO_GEO_RESULTS = [
-  {
-    keywordId: "1",
-    keyword: "SEO対策 やり方",
-    geoScore: 72,
-    checks: [
-      { engine: "CHATGPT" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 15, checkedAt: new Date() },
-      { engine: "GEMINI" as const, isMentioned: true, mentionType: "INDIRECT" as const, sentiment: "NEUTRAL" as const, shareOfVoice: 8, checkedAt: new Date() },
-      { engine: "PERPLEXITY" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 22, checkedAt: new Date() },
-      { engine: "COPILOT" as const, isMentioned: false, mentionType: "NOT_MENTIONED" as const, sentiment: "NONE" as const, shareOfVoice: 0, checkedAt: new Date() },
-      { engine: "CLAUDE" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 18, checkedAt: new Date() },
-    ],
-  },
-  {
-    keywordId: "2",
-    keyword: "GEO対策とは",
-    geoScore: 85,
-    checks: [
-      { engine: "CHATGPT" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 25, checkedAt: new Date() },
-      { engine: "GEMINI" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 20, checkedAt: new Date() },
-      { engine: "PERPLEXITY" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 30, checkedAt: new Date() },
-      { engine: "COPILOT" as const, isMentioned: true, mentionType: "INDIRECT" as const, sentiment: "NEUTRAL" as const, shareOfVoice: 10, checkedAt: new Date() },
-      { engine: "CLAUDE" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 28, checkedAt: new Date() },
-    ],
-  },
-  {
-    keywordId: "3",
-    keyword: "検索順位チェックツール",
-    geoScore: 45,
-    checks: [
-      { engine: "CHATGPT" as const, isMentioned: true, mentionType: "INDIRECT" as const, sentiment: "NEUTRAL" as const, shareOfVoice: 5, checkedAt: new Date() },
-      { engine: "GEMINI" as const, isMentioned: false, mentionType: "NOT_MENTIONED" as const, sentiment: "NONE" as const, shareOfVoice: 0, checkedAt: new Date() },
-      { engine: "PERPLEXITY" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 12, checkedAt: new Date() },
-      { engine: "COPILOT" as const, isMentioned: false, mentionType: "NOT_MENTIONED" as const, sentiment: "NONE" as const, shareOfVoice: 0, checkedAt: new Date() },
-      { engine: "CLAUDE" as const, isMentioned: false, mentionType: "NOT_MENTIONED" as const, sentiment: "NONE" as const, shareOfVoice: 0, checkedAt: new Date() },
-    ],
-  },
-  {
-    keywordId: "4",
-    keyword: "LLMO 対策",
-    geoScore: 90,
-    checks: [
-      { engine: "CHATGPT" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 30, checkedAt: new Date() },
-      { engine: "GEMINI" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 25, checkedAt: new Date() },
-      { engine: "PERPLEXITY" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 35, checkedAt: new Date() },
-      { engine: "COPILOT" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 20, checkedAt: new Date() },
-      { engine: "CLAUDE" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 32, checkedAt: new Date() },
-    ],
-  },
-  {
-    keywordId: "5",
-    keyword: "AI検索 対策",
-    geoScore: 68,
-    checks: [
-      { engine: "CHATGPT" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 18, checkedAt: new Date() },
-      { engine: "GEMINI" as const, isMentioned: true, mentionType: "INDIRECT" as const, sentiment: "NEUTRAL" as const, shareOfVoice: 10, checkedAt: new Date() },
-      { engine: "PERPLEXITY" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "POSITIVE" as const, shareOfVoice: 20, checkedAt: new Date() },
-      { engine: "COPILOT" as const, isMentioned: false, mentionType: "NOT_MENTIONED" as const, sentiment: "NONE" as const, shareOfVoice: 0, checkedAt: new Date() },
-      { engine: "CLAUDE" as const, isMentioned: true, mentionType: "DIRECT" as const, sentiment: "NEUTRAL" as const, shareOfVoice: 15, checkedAt: new Date() },
-    ],
-  },
-];
-
 export default function GeoPage() {
+  const { projectId } = useProject();
   const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
-  const results = DEMO_GEO_RESULTS;
-  const avgScore = Math.round(results.reduce((sum, r) => sum + (r.geoScore || 0), 0) / results.length);
+  const geoQuery = trpc.geo.getLatestByProject.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+
+  const results = geoQuery.data ?? [];
+  const avgScore = results.length > 0
+    ? Math.round(results.reduce((sum, r) => sum + (r.geoScore || 0), 0) / results.length)
+    : 0;
   const mentionedCount = results.filter((r) => r.checks.some((c) => c.isMentioned)).length;
   const directCount = results.reduce(
     (sum, r) => sum + r.checks.filter((c) => c.mentionType === "DIRECT").length,
