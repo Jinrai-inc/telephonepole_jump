@@ -48,6 +48,7 @@ export const projectsRouter = t.router({
         name: z.string().optional(),
         domain: z.string().optional(),
         gscPropertyUrl: z.string().optional(),
+        ga4PropertyId: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {

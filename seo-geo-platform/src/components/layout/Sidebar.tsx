@@ -22,6 +22,7 @@ const navItems = [
   { href: "/keywords", icon: Search, label: "キーワード" },
   { href: "/rankings", icon: TrendingUp, label: "順位トラッキング" },
   { href: "/gsc", icon: Link2, label: "Search Console" },
+  { href: "/ga4", icon: BarChart3, label: "Analytics" },
   { href: "/geo", icon: Bot, label: "GEO分析" },
   { href: "/articles", icon: PenTool, label: "記事作成" },
   { href: "/audit", icon: Stethoscope, label: "サイト監査" },

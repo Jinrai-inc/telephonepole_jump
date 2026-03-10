@@ -134,7 +134,11 @@ function ProjectSettings() {
                 <p className="text-xs text-text-dim">トラフィックデータを取得</p>
               </div>
             </div>
-            <Badge color="dim">近日対応</Badge>
+            {projectQuery.data?.ga4PropertyId ? (
+              <Badge color="accent">接続済み</Badge>
+            ) : (
+              <GA4ConnectButton projectId={projectId} onConnected={() => projectQuery.refetch()} />
+            )}
           </div>
           <div className="flex items-center justify-between py-2 border-t border-border">
             <div className="flex items-center gap-3">
@@ -412,6 +416,51 @@ function AccountSettings() {
         </Button>
       </Card>
     </div>
+  );
+}
+
+function GA4ConnectButton({ projectId, onConnected }: { projectId: string | null; onConnected: () => void }) {
+  const [properties, setProperties] = useState<{ name: string; displayName: string }[]>([]);
+  const [showSelect, setShowSelect] = useState(false);
+  const updateMutation = trpc.projects.update.useMutation({ onSuccess: onConnected });
+
+  useEffect(() => {
+    // Check if ga4_properties cookie exists (set after OAuth callback)
+    try {
+      const cookie = document.cookie.split("; ").find((c) => c.startsWith("ga4_properties="));
+      if (cookie) {
+        const value = decodeURIComponent(cookie.split("=")[1]);
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProperties(parsed);
+          setShowSelect(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  if (showSelect && properties.length > 0) {
+    return (
+      <select
+        className="bg-bg border border-border rounded-lg px-2 py-1 text-xs text-text"
+        onChange={(e) => {
+          if (!projectId || !e.target.value) return;
+          updateMutation.mutate({ id: projectId, ga4PropertyId: e.target.value });
+        }}
+        defaultValue=""
+      >
+        <option value="" disabled>プロパティを選択</option>
+        {properties.map((p) => (
+          <option key={p.name} value={p.name}>{p.displayName}</option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={() => window.location.href = "/api/auth/gsc"}>
+      連携する
+    </Button>
   );
 }
 

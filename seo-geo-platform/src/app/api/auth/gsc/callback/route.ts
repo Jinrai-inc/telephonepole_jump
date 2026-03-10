@@ -60,6 +60,26 @@ export async function GET(request: NextRequest) {
     sites = sitesData.siteEntry || [];
   }
 
+  // List available GA4 properties
+  const ga4Properties: { name: string; displayName: string }[] = [];
+  try {
+    const ga4Res = await fetch("https://analyticsadmin.googleapis.com/v1beta/accountSummaries", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (ga4Res.ok) {
+      const ga4Data = await ga4Res.json();
+      for (const account of ga4Data.accountSummaries || []) {
+        for (const prop of account.propertySummaries || []) {
+          // prop.property is like "properties/123456789", extract the ID
+          const propertyId = prop.property?.replace("properties/", "") || "";
+          ga4Properties.push({ name: propertyId, displayName: prop.displayName });
+        }
+      }
+    }
+  } catch (e) {
+    console.error("GA4 property listing failed:", e);
+  }
+
   // Store tokens temporarily in a cookie for the settings page to use
   const response = NextResponse.redirect(
     `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/settings?gsc_connected=true`
@@ -69,24 +89,16 @@ export async function GET(request: NextRequest) {
   const encryptedAccess = encryptToken(accessToken);
   const encryptedRefresh = refreshToken ? encryptToken(refreshToken) : "";
 
-  response.cookies.set("gsc_access_token", encryptedAccess, {
-    httpOnly: true,
+  const cookieOpts = {
     secure: process.env.NODE_ENV === "production",
     maxAge: 300, // 5 minutes to complete setup
     path: "/",
-  });
-  response.cookies.set("gsc_refresh_token", encryptedRefresh, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 300,
-    path: "/",
-  });
-  response.cookies.set("gsc_sites", JSON.stringify(sites.map(s => s.siteUrl)), {
-    httpOnly: false, // Client needs to read this
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 300,
-    path: "/",
-  });
+  };
+
+  response.cookies.set("gsc_access_token", encryptedAccess, { ...cookieOpts, httpOnly: true });
+  response.cookies.set("gsc_refresh_token", encryptedRefresh, { ...cookieOpts, httpOnly: true });
+  response.cookies.set("gsc_sites", JSON.stringify(sites.map(s => s.siteUrl)), { ...cookieOpts, httpOnly: false });
+  response.cookies.set("ga4_properties", JSON.stringify(ga4Properties), { ...cookieOpts, httpOnly: false });
 
   return response;
 }
