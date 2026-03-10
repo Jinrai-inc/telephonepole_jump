@@ -2,11 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
