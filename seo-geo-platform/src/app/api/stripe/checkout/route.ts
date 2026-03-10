@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2025-03-31.basil",
-});
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+    apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion,
+  });
+}
 
-const PRICE_MAP: Record<string, string> = {
-  STARTER: process.env.STRIPE_PRICE_STARTER || "",
-  BUSINESS: process.env.STRIPE_PRICE_BUSINESS || "",
-  AGENCY: process.env.STRIPE_PRICE_AGENCY || "",
-};
+function getPriceMap(): Record<string, string> {
+  return {
+    STARTER: process.env.STRIPE_PRICE_STARTER || "",
+    BUSINESS: process.env.STRIPE_PRICE_BUSINESS || "",
+    AGENCY: process.env.STRIPE_PRICE_AGENCY || "",
+  };
+}
 
 /**
  * POST /api/stripe/checkout
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "orgId and plan are required" }, { status: 400 });
     }
 
-    const priceId = PRICE_MAP[plan];
+    const priceId = getPriceMap()[plan];
     if (!priceId) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
@@ -33,6 +37,8 @@ export async function POST(request: NextRequest) {
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
+
+    const stripe = getStripe();
 
     // Create or retrieve Stripe customer
     let customerId = org.stripeCustomerId;

@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 const DATAFORSEO_BASE = "https://api.dataforseo.com/v3";
 
 function getAuth(): string {

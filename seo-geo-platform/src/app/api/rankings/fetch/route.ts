@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       // Find our domain in results
       let positionGoogle: number | null = null;
       let hasAiOverview = false;
-      let aiOverviewPosition: number | null = null;
+      const aiOverviewPosition: number | null = null;
 
       if (serp.items) {
         for (const item of serp.items) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       }
 
       // Save ranking
-      const ranking = await prisma.keywordRanking.create({
+      await prisma.keywordRanking.create({
         data: {
           keywordId: kw.id,
           date: today,

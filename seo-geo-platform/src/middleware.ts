@@ -1,9 +1,9 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  let res = NextResponse.next({ request: req });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -12,8 +12,22 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  const supabase = createMiddlewareClient({ req, res });
-  const { data: { session } } = await supabase.auth.getSession();
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+        res = NextResponse.next({ request: req });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          res.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/signup");
   const isSharedPage = req.nextUrl.pathname.startsWith("/shared");
@@ -23,11 +37,11 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  if (!session && !isAuthPage) {
+  if (!user && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (session && isAuthPage) {
+  if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 

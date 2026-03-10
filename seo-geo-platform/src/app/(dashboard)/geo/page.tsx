@@ -6,7 +6,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { Badge } from "@/components/ui/Badge";
 import { GeoEngineGrid } from "@/components/geo/GeoEngineGrid";
 import { GeoScoreChart } from "@/components/geo/GeoScoreChart";
-import { Bot, Eye, EyeOff, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
+import { Bot, Eye, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 // Demo data

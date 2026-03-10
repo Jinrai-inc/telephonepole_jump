@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Search, TrendingUp, PenTool, Bot, Settings } from "lucide-react";
+import { BarChart3, Search, TrendingUp, PenTool, Bot } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: BarChart3, label: "概要" },

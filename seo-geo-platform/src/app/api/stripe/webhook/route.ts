@@ -3,9 +3,11 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/lib/constants";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2025-03-31.basil",
-});
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+    apiVersion: "2025-02-24.acacia" as Stripe.LatestApiVersion,
+  });
+}
 
 /**
  * POST /api/stripe/webhook
@@ -18,6 +20,8 @@ export async function POST(request: NextRequest) {
   if (!sig) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
+
+  const stripe = getStripe();
 
   let event: Stripe.Event;
   try {

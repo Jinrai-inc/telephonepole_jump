@@ -14,8 +14,10 @@ interface RankingChartProps {
   height?: number;
 }
 
+const PADDING = { top: 20, right: 16, bottom: 32, left: 40 };
+
 export function RankingChart({ data, height = 280 }: RankingChartProps) {
-  const padding = { top: 20, right: 16, bottom: 32, left: 40 };
+  const padding = PADDING;
   const chartWidth = 600;
   const chartHeight = height;
   const innerWidth = chartWidth - padding.left - padding.right;
@@ -60,7 +62,7 @@ export function RankingChart({ data, height = 280 }: RankingChartProps) {
     const labelStep = Math.max(1, Math.floor(data.length / 6));
     const labels = data
       .filter((_, i) => i % labelStep === 0 || i === data.length - 1)
-      .map((d, _, arr) => ({
+      .map((d) => ({
         label: d.date.slice(5), // MM-DD
         x: getX(data.indexOf(d)),
       }));
