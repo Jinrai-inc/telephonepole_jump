@@ -79,17 +79,8 @@ workflows:
 
       - name: Set build version
         script: |
-          LATEST_APPSTORE=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" \
-            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" 2>/dev/null || echo "0")
-          LATEST_TESTFLIGHT=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" \
-            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" 2>/dev/null || echo "0")
-          LATEST=$(( LATEST_APPSTORE > LATEST_TESTFLIGHT ? LATEST_APPSTORE : LATEST_TESTFLIGHT ))
-          BUILD_NUMBER=$((LATEST + 1))
-          echo "Latest App Store: $LATEST_APPSTORE, Latest TestFlight: $LATEST_TESTFLIGHT -> New build: $BUILD_NUMBER"
+          BUILD_NUMBER=$(date +%s)
+          echo "Setting build number: $BUILD_NUMBER"
           cd ios/App
           agvtool new-version -all $BUILD_NUMBER
 
