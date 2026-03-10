@@ -41,6 +41,9 @@ export default function SignupPage() {
         return;
       }
 
+      if (data.user?.orgId) localStorage.setItem("seo-geo-org-id", data.user.orgId);
+      if (data.user?.projectId) localStorage.setItem("seo-geo-project-id", data.user.projectId);
+
       window.location.href = "/keywords";
     } catch {
       setError("通信エラーが発生しました");

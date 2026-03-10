@@ -21,10 +21,29 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [orgId, setOrgIdState] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("seo-geo-project-id");
+    const storedProject = localStorage.getItem("seo-geo-project-id");
     const storedOrg = localStorage.getItem("seo-geo-org-id");
-    if (stored) setProjectIdState(stored);
-    if (storedOrg) setOrgIdState(storedOrg);
+
+    if (storedProject && storedOrg) {
+      setProjectIdState(storedProject);
+      setOrgIdState(storedOrg);
+      return;
+    }
+
+    // localStorageにない場合、セッションから取得してセット
+    fetch("/api/auth/demo")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user?.orgId && !storedOrg) {
+          setOrgIdState(data.user.orgId);
+          localStorage.setItem("seo-geo-org-id", data.user.orgId);
+        }
+        if (data.user?.projectId && !storedProject) {
+          setProjectIdState(data.user.projectId);
+          localStorage.setItem("seo-geo-project-id", data.user.projectId);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const setProjectId = (id: string) => {

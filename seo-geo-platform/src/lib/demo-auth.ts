@@ -11,6 +11,8 @@ export interface DemoUser {
   firstName: string;
   phone: string;
   plan: "STARTER" | "BUSINESS" | "AGENCY" | "ENTERPRISE";
+  orgId: string;
+  projectId: string;
 }
 
 // テスト用アカウント
@@ -25,6 +27,8 @@ export const DEMO_ACCOUNTS: Record<string, { password: string; user: DemoUser }>
       firstName: "太郎",
       phone: "03-1234-5678",
       plan: "ENTERPRISE",
+      orgId: "",
+      projectId: "",
     },
   },
 };

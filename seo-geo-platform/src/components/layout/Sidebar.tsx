@@ -14,6 +14,7 @@ import {
   ClipboardList,
   FileText,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -60,6 +61,24 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="p-3 border-t border-border">
+        <button
+          onClick={async () => {
+            await fetch("/api/auth/demo", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "logout" }),
+            });
+            localStorage.removeItem("seo-geo-project-id");
+            localStorage.removeItem("seo-geo-org-id");
+            window.location.href = "/login";
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-mid hover:text-warn hover:bg-warn/10 transition-colors w-full"
+        >
+          <LogOut size={18} />
+          <span>ログアウト</span>
+        </button>
+      </div>
     </aside>
   );
 }
