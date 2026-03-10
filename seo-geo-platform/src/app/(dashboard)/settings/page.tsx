@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -13,6 +13,8 @@ import {
   Shield,
   ChevronRight,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
 type Tab = "project" | "notifications" | "billing" | "account";
 
@@ -55,8 +57,24 @@ export default function SettingsPage() {
 }
 
 function ProjectSettings() {
-  const [domain, setDomain] = useState("example.com");
-  const [projectName, setProjectName] = useState("メインサイト");
+  const { projectId } = useProject();
+  const [domain, setDomain] = useState("");
+  const [projectName, setProjectName] = useState("");
+
+  const projectQuery = trpc.projects.getById.useQuery(
+    { id: projectId! },
+    { enabled: !!projectId }
+  );
+  const updateMutation = trpc.projects.update.useMutation({
+    onSuccess: () => projectQuery.refetch(),
+  });
+
+  useEffect(() => {
+    if (projectQuery.data) {
+      setProjectName(projectQuery.data.name);
+      setDomain(projectQuery.data.domain);
+    }
+  }, [projectQuery.data]);
 
   return (
     <div className="space-y-4">
@@ -81,7 +99,15 @@ function ProjectSettings() {
               className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:border-accent/50"
             />
           </div>
-          <Button>保存</Button>
+          <Button
+            loading={updateMutation.isPending}
+            onClick={() => {
+              if (!projectId) return;
+              updateMutation.mutate({ id: projectId, name: projectName, domain });
+            }}
+          >
+            保存
+          </Button>
         </div>
       </Card>
 
@@ -127,11 +153,51 @@ function ProjectSettings() {
 }
 
 function NotificationSettings() {
+  const { orgId } = useProject();
   const [slackUrl, setSlackUrl] = useState("");
   const [rankThreshold, setRankThreshold] = useState(5);
   const [notifyRank, setNotifyRank] = useState(true);
   const [notifyGeo, setNotifyGeo] = useState(true);
   const [notifyErrors, setNotifyErrors] = useState(true);
+
+  const settingsQuery = trpc.notifications.getSettings.useQuery(
+    { orgId: orgId! },
+    { enabled: !!orgId }
+  );
+  const createMutation = trpc.notifications.create.useMutation({
+    onSuccess: () => settingsQuery.refetch(),
+  });
+  const updateMutation = trpc.notifications.updateSettings.useMutation({
+    onSuccess: () => settingsQuery.refetch(),
+  });
+  const testMutation = trpc.notifications.testNotification.useMutation();
+
+  const slackSetting = settingsQuery.data?.find((s) => s.channel === "SLACK");
+
+  useEffect(() => {
+    if (slackSetting) {
+      setSlackUrl(slackSetting.webhookUrl ?? "");
+      setRankThreshold(slackSetting.rankChangeThreshold);
+      setNotifyRank(slackSetting.notifyRankChange);
+      setNotifyGeo(slackSetting.notifyGeoChange);
+      setNotifyErrors(slackSetting.notifyErrors);
+    }
+  }, [slackSetting]);
+
+  const handleSave = () => {
+    if (slackSetting) {
+      updateMutation.mutate({
+        id: slackSetting.id,
+        webhookUrl: slackUrl,
+        notifyRankChange: notifyRank,
+        rankChangeThreshold: rankThreshold,
+        notifyGeoChange: notifyGeo,
+        notifyErrors: notifyErrors,
+      });
+    } else if (orgId) {
+      createMutation.mutate({ orgId, channel: "SLACK", webhookUrl: slackUrl });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -148,7 +214,15 @@ function NotificationSettings() {
               className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-accent/50"
             />
           </div>
-          <Button size="sm" variant="outline">テスト送信</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            loading={testMutation.isPending}
+            onClick={() => slackSetting && testMutation.mutate({ id: slackSetting.id })}
+            disabled={!slackSetting}
+          >
+            テスト送信
+          </Button>
         </div>
       </Card>
 
@@ -186,7 +260,7 @@ function NotificationSettings() {
             checked={notifyErrors}
             onChange={setNotifyErrors}
           />
-          <Button>保存</Button>
+          <Button loading={updateMutation.isPending || createMutation.isPending} onClick={handleSave}>保存</Button>
         </div>
       </Card>
     </div>

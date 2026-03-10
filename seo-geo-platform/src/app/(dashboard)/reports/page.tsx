@@ -1,18 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FileText, Download, Plus, Calendar, Building } from "lucide-react";
-
-const DEMO_REPORTS = [
-  { id: "1", reportType: "MONTHLY", generatedAt: "2026-03-01", fileUrl: "#", whiteLabel: false },
-  { id: "2", reportType: "KEYWORD", generatedAt: "2026-02-28", fileUrl: "#", whiteLabel: false },
-  { id: "3", reportType: "GEO", generatedAt: "2026-02-25", fileUrl: "#", whiteLabel: true },
-  { id: "4", reportType: "TECHNICAL_SEO", generatedAt: "2026-02-20", fileUrl: "#", whiteLabel: false },
-  { id: "5", reportType: "MONTHLY", generatedAt: "2026-02-01", fileUrl: "#", whiteLabel: true },
-];
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
 const typeConfig: Record<string, { label: string; color: "accent" | "blue" | "purple" | "orange" }> = {
   MONTHLY: { label: "月次レポート", color: "accent" },
@@ -22,17 +16,28 @@ const typeConfig: Record<string, { label: string; color: "accent" | "blue" | "pu
 };
 
 export default function ReportsPage() {
-  const [generating, setGenerating] = useState(false);
+  const { projectId, orgId } = useProject();
+
+  const utils = trpc.useUtils();
+  const reportsQuery = trpc.reports.getAll.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+  const generateMutation = trpc.reports.generate.useMutation({
+    onSuccess: () => utils.reports.getAll.invalidate(),
+  });
+
+  const reports = reportsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">レポート</h1>
         <Button
-          loading={generating}
+          loading={generateMutation.isPending}
           onClick={() => {
-            setGenerating(true);
-            setTimeout(() => setGenerating(false), 2000);
+            if (!projectId || !orgId) return;
+            generateMutation.mutate({ projectId, orgId, reportType: "MONTHLY" });
           }}
         >
           <Plus size={16} className="mr-1.5" />
@@ -43,13 +48,18 @@ export default function ReportsPage() {
       {/* Report Type Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {Object.entries(typeConfig).map(([key, config]) => (
-          <Card key={key} hover className="cursor-pointer text-center py-6">
-            <FileText size={24} className={`mx-auto mb-2 text-${config.color}`} />
-            <p className="text-sm font-medium text-text">{config.label}</p>
-            <p className="text-xs text-text-dim mt-1">
-              {DEMO_REPORTS.filter((r) => r.reportType === key).length}件
-            </p>
-          </Card>
+          <div key={key} onClick={() => {
+            if (!projectId || !orgId) return;
+            generateMutation.mutate({ projectId, orgId, reportType: key as "MONTHLY" | "KEYWORD" | "GEO" | "TECHNICAL_SEO" });
+          }}>
+            <Card hover className="cursor-pointer text-center py-6">
+              <FileText size={24} className={`mx-auto mb-2 text-${config.color}`} />
+              <p className="text-sm font-medium text-text">{config.label}</p>
+              <p className="text-xs text-text-dim mt-1">
+                {reports.filter((r) => r.reportType === key).length}件
+              </p>
+            </Card>
+          </div>
         ))}
       </div>
 
@@ -59,35 +69,45 @@ export default function ReportsPage() {
           <h3 className="text-sm font-medium text-text-mid">レポート履歴</h3>
         </div>
         <div className="divide-y divide-border/50">
-          {DEMO_REPORTS.map((report) => {
-            const tc = typeConfig[report.reportType] || typeConfig.MONTHLY;
-            return (
-              <div key={report.id} className="flex items-center justify-between px-4 py-3 hover:bg-card-alt/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <FileText size={18} className={`text-${tc.color}`} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-text">{tc.label}</span>
-                      {report.whiteLabel && (
-                        <Badge color="purple" size="sm">
-                          <Building size={8} className="mr-0.5" />
-                          ホワイトラベル
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-text-dim mt-0.5">
-                      <Calendar size={10} />
-                      {report.generatedAt}
+          {reports.length === 0 ? (
+            <div className="px-4 py-12 text-center text-text-dim text-sm">
+              レポートがありません。上のカードをクリックして生成してください。
+            </div>
+          ) : (
+            reports.map((report) => {
+              const tc = typeConfig[report.reportType] || typeConfig.MONTHLY;
+              return (
+                <div key={report.id} className="flex items-center justify-between px-4 py-3 hover:bg-card-alt/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <FileText size={18} className={`text-${tc.color}`} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-text">{tc.label}</span>
+                        {report.whiteLabel && (
+                          <Badge color="purple" size="sm">
+                            <Building size={8} className="mr-0.5" />
+                            ホワイトラベル
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-text-dim mt-0.5">
+                        <Calendar size={10} />
+                        {new Date(report.generatedAt).toISOString().split("T")[0]}
+                      </div>
                     </div>
                   </div>
+                  {report.fileUrl ? (
+                    <Button size="sm" variant="outline" onClick={() => window.open(report.fileUrl!, "_blank")}>
+                      <Download size={14} className="mr-1" />
+                      PDF
+                    </Button>
+                  ) : (
+                    <Badge color="dim" size="sm">生成中</Badge>
+                  )}
                 </div>
-                <Button size="sm" variant="outline">
-                  <Download size={14} className="mr-1" />
-                  PDF
-                </Button>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </Card>
 
