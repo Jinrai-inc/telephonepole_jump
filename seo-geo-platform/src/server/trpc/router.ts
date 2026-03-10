@@ -8,10 +8,14 @@ import { auditRouter } from "./routers/audit";
 import { regulationsRouter } from "./routers/regulations";
 import { reportsRouter } from "./routers/reports";
 import { notificationsRouter } from "./routers/notifications";
+import { dashboardRouter } from "./routers/dashboard";
+import { projectsRouter } from "./routers/projects";
 
 const t = initTRPC.context<Context>().create();
 
 export const appRouter = t.router({
+  dashboard: dashboardRouter,
+  projects: projectsRouter,
   keywords: keywordsRouter,
   rankings: rankingsRouter,
   geo: geoRouter,

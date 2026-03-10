@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TrpcProvider } from "@/components/providers/TrpcProvider";
+import { ProjectProvider } from "@/components/providers/ProjectProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="bg-bg text-text antialiased">
-        <TrpcProvider>{children}</TrpcProvider>
+        <TrpcProvider>
+          <ProjectProvider>{children}</ProjectProvider>
+        </TrpcProvider>
       </body>
     </html>
   );
