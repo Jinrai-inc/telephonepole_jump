@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StepNav } from "@/components/ui/StepNav";
 import { Globe, Key, Link2, Check } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useProject } from "@/components/providers/ProjectProvider";
 
 const steps = [
   { label: "サイト情報", icon: Globe },
@@ -14,13 +16,46 @@ const steps = [
 ];
 
 export default function OnboardingPage() {
+  const { projectId } = useProject();
   const [currentStep, setCurrentStep] = useState(0);
   const [projectName, setProjectName] = useState("");
   const [domain, setDomain] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const updateProject = trpc.projects.update.useMutation();
+  const bulkCreate = trpc.keywords.bulkCreate.useMutation();
 
   const next = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
+  const handleSaveProject = async () => {
+    if (!projectId) { next(); return; }
+    setSaving(true);
+    try {
+      await updateProject.mutateAsync({ id: projectId, name: projectName.trim(), domain: domain.trim() });
+      next();
+    } catch (error) {
+      console.error("Project update failed:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveKeywords = async () => {
+    if (!projectId) { next(); return; }
+    const kwList = keywords.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+    if (kwList.length === 0) { next(); return; }
+    setSaving(true);
+    try {
+      await bulkCreate.mutateAsync({ projectId, keywords: kwList });
+      next();
+    } catch (error) {
+      console.error("Keywords bulk create failed:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -58,7 +93,7 @@ export default function OnboardingPage() {
               <p className="text-xs text-text-dim mt-1">https:// なしで入力してください</p>
             </div>
             <div className="flex justify-end">
-              <Button onClick={next} disabled={!projectName.trim() || !domain.trim()}>
+              <Button onClick={handleSaveProject} disabled={!projectName.trim() || !domain.trim() || saving} loading={saving}>
                 次へ
               </Button>
             </div>
@@ -91,7 +126,7 @@ export default function OnboardingPage() {
               <Button variant="ghost" onClick={prev}>戻る</Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={next}>スキップ</Button>
-                <Button onClick={next} disabled={!keywords.trim()}>次へ</Button>
+                <Button onClick={handleSaveKeywords} disabled={!keywords.trim() || saving} loading={saving}>次へ</Button>
               </div>
             </div>
           </div>
