@@ -1,0 +1,435 @@
+// ===================================================
+// SEO×GEO 統合プラットフォーム DBスキーマ
+// ===================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- ユーザー ---
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  orgMembers OrgMember[]
+  articles   Article[]   @relation("AssignedArticles")
+
+  @@map("users")
+}
+
+// --- 組織（契約単位）---
+model Organization {
+  id             String   @id @default(uuid())
+  name           String
+  plan           Plan     @default(STARTER)
+  logoUrl        String?  @map("logo_url")
+  brandColor     String?  @map("brand_color")
+  maxProjects    Int      @default(1) @map("max_projects")
+  maxKeywords    Int      @default(100) @map("max_keywords")
+  maxGeoChecks   Int      @default(50) @map("max_geo_checks")
+  stripeCustomerId String? @map("stripe_customer_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  members       OrgMember[]
+  projects      Project[]
+  regulations   Regulation[]
+  notifications NotificationSetting[]
+  reports       Report[]
+
+  @@map("organizations")
+}
+
+enum Plan {
+  STARTER
+  BUSINESS
+  AGENCY
+}
+
+// --- 組織メンバー ---
+model OrgMember {
+  id         String    @id @default(uuid())
+  orgId      String    @map("org_id")
+  userId     String    @map("user_id")
+  role       OrgRole   @default(MEMBER)
+  invitedAt  DateTime  @default(now()) @map("invited_at")
+  acceptedAt DateTime? @map("accepted_at")
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@map("org_members")
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+  WRITER
+}
+
+// --- プロジェクト（対象サイト）---
+model Project {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  name             String
+  domain           String
+  gscPropertyUrl   String?  @map("gsc_property_url")
+  ga4PropertyId    String?  @map("ga4_property_id")
+  gscAccessToken   String?  @map("gsc_access_token")
+  gscRefreshToken  String?  @map("gsc_refresh_token")
+  domainRating     Decimal? @map("domain_rating") @db.Decimal(5, 2)
+  backlinkCount    Int?     @map("backlink_count")
+  referringDomains Int?     @map("referring_domains")
+  siteHealthScore  Decimal? @map("site_health_score") @db.Decimal(5, 2)
+  geoScore         Decimal? @map("geo_score") @db.Decimal(5, 2)
+  lastCrawledAt    DateTime? @map("last_crawled_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  keywords   Keyword[]
+  siteAudits SiteAudit[]
+  pages      Page[]
+  articles   Article[]
+  reports    Report[]
+
+  @@map("projects")
+}
+
+// --- キーワード ---
+model Keyword {
+  id                String        @id @default(uuid())
+  projectId         String        @map("project_id")
+  keyword           String
+  searchVolume      Int?          @map("search_volume")
+  keywordDifficulty Decimal?      @map("keyword_difficulty") @db.Decimal(5, 2)
+  searchIntent      SearchIntent? @map("search_intent")
+  cpc               Decimal?      @db.Decimal(8, 2)
+  currentPosition   Int?          @map("current_position")
+  bestPosition      Int?          @map("best_position")
+  geoScore          Decimal?      @map("geo_score") @db.Decimal(5, 2)
+  targetUrl         String?       @map("target_url")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rankings  KeywordRanking[]
+  geoChecks KeywordGeoCheck[]
+
+  @@map("keywords")
+}
+
+enum SearchIntent {
+  INFORMATIONAL
+  COMMERCIAL
+  TRANSACTIONAL
+  NAVIGATIONAL
+}
+
+// --- 順位履歴（最重要テーブル）---
+model KeywordRanking {
+  id                BigInt   @id @default(autoincrement())
+  keywordId         String   @map("keyword_id")
+  date              DateTime @db.Date
+  positionGoogle    Int?     @map("position_google")
+  positionYahoo     Int?     @map("position_yahoo")
+  positionMobile    Int?     @map("position_mobile")
+  positionDesktop   Int?     @map("position_desktop")
+  hasAiOverview     Boolean  @default(false) @map("has_ai_overview")
+  aiOverviewPosition Int?    @map("ai_overview_position")
+  serpFeatures      Json?    @map("serp_features") @db.JsonB
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordId, date])
+  @@index([keywordId, date])
+  @@map("keyword_rankings")
+}
+
+// --- GEOモニタリング結果 ---
+model KeywordGeoCheck {
+  id                  String     @id @default(uuid())
+  keywordId           String     @map("keyword_id")
+  checkedAt           DateTime   @default(now()) @map("checked_at")
+  engine              AiEngine
+  isMentioned         Boolean    @map("is_mentioned")
+  mentionType         MentionType? @map("mention_type")
+  sentiment           Sentiment?
+  shareOfVoice        Decimal?   @map("share_of_voice") @db.Decimal(5, 2)
+  aiResponseText      String?    @map("ai_response_text") @db.Text
+  competitorsMentioned Json?     @map("competitors_mentioned") @db.JsonB
+
+  keyword Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@map("keyword_geo_checks")
+}
+
+enum AiEngine {
+  CHATGPT
+  GEMINI
+  PERPLEXITY
+  COPILOT
+  CLAUDE
+}
+
+enum MentionType {
+  DIRECT
+  INDIRECT
+  NOT_MENTIONED
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  NONE
+}
+
+// --- サイト監査 ---
+model SiteAudit {
+  id            String   @id @default(uuid())
+  projectId     String   @map("project_id")
+  crawledAt     DateTime @default(now()) @map("crawled_at")
+  pagesCrawled  Int      @map("pages_crawled")
+  healthScore   Decimal  @map("health_score") @db.Decimal(5, 2)
+  errorsCount   Int      @map("errors_count")
+  warningsCount Int      @map("warnings_count")
+  noticesCount  Int      @map("notices_count")
+  cwvLcp        Decimal? @map("cwv_lcp") @db.Decimal(8, 2)
+  cwvInp        Decimal? @map("cwv_inp") @db.Decimal(8, 2)
+  cwvCls        Decimal? @map("cwv_cls") @db.Decimal(8, 4)
+  mobileScore   Int?     @map("mobile_score")
+  desktopScore  Int?     @map("desktop_score")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  AuditIssue[]
+
+  @@map("site_audits")
+}
+
+model AuditIssue {
+  id             String      @id @default(uuid())
+  auditId        String      @map("audit_id")
+  pageUrl        String      @map("page_url") @db.Text
+  issueType      IssueType   @map("issue_type")
+  severity       Severity
+  description    String      @db.Text
+  recommendation String?     @db.Text
+  isResolved     Boolean     @default(false) @map("is_resolved")
+
+  audit SiteAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@map("audit_issues")
+}
+
+enum IssueType {
+  META_DESCRIPTION_MISSING
+  ALT_MISSING
+  BROKEN_LINK
+  REDIRECT_CHAIN
+  DUPLICATE_CONTENT
+  HTTPS_MIXED
+  H1_MISSING
+  H1_MULTIPLE
+  CANONICAL_MISSING
+  TITLE_TOO_LONG
+  TITLE_TOO_SHORT
+  SLOW_PAGE
+  MOBILE_UNFRIENDLY
+}
+
+enum Severity {
+  ERROR
+  WARNING
+  NOTICE
+}
+
+// --- ページ情報（タグ分析）---
+model Page {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  url             String   @db.Text
+  title           String?  @db.Text
+  metaDescription String?  @map("meta_description") @db.Text
+  h1Count         Int      @default(0) @map("h1_count")
+  h2Count         Int      @default(0) @map("h2_count")
+  h3Count         Int      @default(0) @map("h3_count")
+  h4Count         Int      @default(0) @map("h4_count")
+  h5Count         Int      @default(0) @map("h5_count")
+  h6Count         Int      @default(0) @map("h6_count")
+  wordCount       Int      @default(0) @map("word_count")
+  hasCanonical    Boolean  @default(false) @map("has_canonical")
+  hasOgTags       Boolean  @default(false) @map("has_og_tags")
+  hasSchema       Boolean  @default(false) @map("has_schema")
+  schemaTypes     Json?    @map("schema_types") @db.JsonB
+  hasLlmsTxt      Boolean  @default(false) @map("has_llms_txt")
+  mobileFriendly  Boolean  @default(true) @map("mobile_friendly")
+  lastCheckedAt   DateTime? @map("last_checked_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("pages")
+}
+
+// --- レギュレーション ---
+model Regulation {
+  id         String           @id @default(uuid())
+  orgId      String           @map("org_id")
+  name       String
+  tone       Tone             @default(DESU_MASU)
+  status     RegulationStatus @default(DRAFT)
+  shareToken String?          @unique @map("share_token")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  org      Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  rules    RegulationRule[]
+  articles Article[]
+
+  @@map("regulations")
+}
+
+enum Tone {
+  DESU_MASU
+  DA_DEARU
+  MIXED
+}
+
+enum RegulationStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+model RegulationRule {
+  id           String   @id @default(uuid())
+  regulationId String   @map("regulation_id")
+  ruleType     RuleType @map("rule_type")
+  ruleKey      String   @map("rule_key")
+  ruleValue    String   @map("rule_value") @db.Text
+  severity     Severity @default(WARNING)
+
+  regulation Regulation @relation(fields: [regulationId], references: [id], onDelete: Cascade)
+
+  @@map("regulation_rules")
+}
+
+enum RuleType {
+  NG_WORD
+  EXPRESSION_UNIFY
+  REQUIRED_ELEMENT
+  STYLE_GUIDE
+}
+
+// --- 記事 ---
+model Article {
+  id              String        @id @default(uuid())
+  projectId       String        @map("project_id")
+  regulationId    String?       @map("regulation_id")
+  title           String        @db.Text
+  targetKeyword   String?       @map("target_keyword")
+  status          ArticleStatus @default(DRAFT)
+  contentHtml     String?       @map("content_html") @db.Text
+  contentText     String?       @map("content_text") @db.Text
+  structureJson   Json?         @map("structure_json") @db.JsonB
+  wordCount       Int           @default(0) @map("word_count")
+  seoScore        Decimal?      @map("seo_score") @db.Decimal(5, 2)
+  geoScore        Decimal?      @map("geo_score") @db.Decimal(5, 2)
+  originalityScore Decimal?     @map("originality_score") @db.Decimal(5, 2)
+  aiDetectionScore Decimal?     @map("ai_detection_score") @db.Decimal(5, 2)
+  assignedTo      String?       @map("assigned_to")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  publishedAt     DateTime?     @map("published_at")
+
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  regulation Regulation?    @relation(fields: [regulationId], references: [id])
+  assignee   User?          @relation("AssignedArticles", fields: [assignedTo], references: [id])
+  checks     ArticleCheck[]
+
+  @@map("articles")
+}
+
+enum ArticleStatus {
+  DRAFT
+  WRITING
+  PROOFREADING
+  REVIEWING
+  PUBLISHED
+}
+
+model ArticleCheck {
+  id          String    @id @default(uuid())
+  articleId   String    @map("article_id")
+  checkType   CheckType @map("check_type")
+  checkedAt   DateTime  @default(now()) @map("checked_at")
+  resultJson  Json      @map("result_json") @db.JsonB
+  issuesCount Int       @default(0) @map("issues_count")
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("article_checks")
+}
+
+enum CheckType {
+  PROOFREAD
+  FACTCHECK
+  COPYCHECK
+  AI_DETECT
+}
+
+// --- レポート ---
+model Report {
+  id                String     @id @default(uuid())
+  projectId         String     @map("project_id")
+  orgId             String     @map("org_id")
+  generatedAt       DateTime   @default(now()) @map("generated_at")
+  reportType        ReportType @map("report_type")
+  fileUrl           String?    @map("file_url") @db.Text
+  whiteLabel        Boolean    @default(false) @map("white_label")
+  customLogoUrl     String?    @map("custom_logo_url") @db.Text
+  customCompanyName String?    @map("custom_company_name")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+enum ReportType {
+  TECHNICAL_SEO
+  MONTHLY
+  KEYWORD
+  GEO
+}
+
+// --- 通知設定 ---
+model NotificationSetting {
+  id                    String              @id @default(uuid())
+  orgId                 String              @map("org_id")
+  channel               NotificationChannel
+  webhookUrl            String?             @map("webhook_url") @db.Text
+  notifyRankChange      Boolean             @default(true) @map("notify_rank_change")
+  rankChangeThreshold   Int                 @default(5) @map("rank_change_threshold")
+  notifyErrors          Boolean             @default(true) @map("notify_errors")
+  notifyGeoChange       Boolean             @default(true) @map("notify_geo_change")
+  notifyArticleComplete Boolean             @default(false) @map("notify_article_complete")
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+enum NotificationChannel {
+  EMAIL
+  SLACK
+  CHATWORK
+}
