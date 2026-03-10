@@ -2,19 +2,53 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [companyName, setCompanyName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Supabase auth
-    setLoading(false);
+    setError("");
+
+    try {
+      const res = await fetch("/api/auth/demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "signup",
+          companyName,
+          lastName,
+          firstName,
+          phone,
+          email,
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "登録に失敗しました");
+        return;
+      }
+
+      router.push("/keywords");
+    } catch {
+      setError("通信エラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,14 +62,54 @@ export default function SignupPage() {
         </div>
         <div className="bg-card border border-border rounded-xl p-6">
           <form onSubmit={handleSignup} className="space-y-4">
+            {error && (
+              <div className="bg-warn/10 border border-warn/30 rounded-lg px-3 py-2 text-warn text-sm">
+                {error}
+              </div>
+            )}
             <div>
-              <label className="block text-sm text-text-mid mb-1">お名前</label>
+              <label className="block text-sm text-text-mid mb-1">会社名</label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-soft border border-border rounded-lg text-text focus:outline-none focus:border-accent"
-                placeholder="山田 太郎"
+                placeholder="株式会社〇〇"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-text-mid mb-1">姓</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-soft border border-border rounded-lg text-text focus:outline-none focus:border-accent"
+                  placeholder="山田"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-text-mid mb-1">名</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-soft border border-border rounded-lg text-text focus:outline-none focus:border-accent"
+                  placeholder="太郎"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-text-mid mb-1">電話番号</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-3 py-2 bg-bg-soft border border-border rounded-lg text-text focus:outline-none focus:border-accent"
+                placeholder="03-1234-5678"
                 required
               />
             </div>
