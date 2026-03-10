@@ -31,7 +31,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/keywords");
+      window.location.href = "/keywords";
     } catch {
       setError("通信エラーが発生しました");
     } finally {
