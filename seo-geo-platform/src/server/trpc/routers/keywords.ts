@@ -54,6 +54,23 @@ export const keywordsRouter = t.router({
       return prisma.keyword.delete({ where: { id: input.id } });
     }),
 
+  bulkCreate: t.procedure
+    .input(z.object({
+      projectId: z.string(),
+      keywords: z.array(z.string().min(1)),
+    }))
+    .mutation(async ({ input }) => {
+      const data = input.keywords.map((kw) => ({
+        projectId: input.projectId,
+        keyword: kw,
+      }));
+      const result = await prisma.keyword.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      return { created: result.count };
+    }),
+
   getById: t.procedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {

@@ -5,14 +5,15 @@ interface MetricCardProps {
   icon: React.ReactNode;
   label: string;
   value: string | number;
-  change?: number;
+  change?: number | string;
   changeLabel?: string;
   color?: string;
 }
 
 export function MetricCard({ icon, label, value, change, changeLabel, color = "accent" }: MetricCardProps) {
-  const isPositive = change && change > 0;
-  const isNegative = change && change < 0;
+  const numChange = typeof change === "number" ? change : null;
+  const isPositive = numChange !== null && numChange > 0;
+  const isNegative = numChange !== null && numChange < 0;
 
   return (
     <Card className="relative overflow-hidden">
@@ -28,10 +29,14 @@ export function MetricCard({ icon, label, value, change, changeLabel, color = "a
       </div>
       {change !== undefined && (
         <div className="mt-2 flex items-center gap-1 text-sm">
-          <span className={isPositive ? "text-green" : isNegative ? "text-warn" : "text-text-dim"}>
-            {isPositive ? "↑" : isNegative ? "↓" : "→"}
-            {Math.abs(change)}
-          </span>
+          {typeof change === "string" ? (
+            <span className="text-text-dim">{change}</span>
+          ) : (
+            <span className={isPositive ? "text-green" : isNegative ? "text-warn" : "text-text-dim"}>
+              {isPositive ? "↑" : isNegative ? "↓" : "→"}
+              {Math.abs(change)}
+            </span>
+          )}
           {changeLabel && <span className="text-text-dim">{changeLabel}</span>}
         </div>
       )}

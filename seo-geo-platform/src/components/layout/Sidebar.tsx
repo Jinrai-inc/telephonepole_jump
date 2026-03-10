@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Search,
+  TrendingUp,
   PenTool,
   Bot,
   Stethoscope,
@@ -17,6 +18,7 @@ import {
 const navItems = [
   { href: "/", icon: BarChart3, label: "概要" },
   { href: "/keywords", icon: Search, label: "キーワード" },
+  { href: "/rankings", icon: TrendingUp, label: "順位トラッキング" },
   { href: "/articles", icon: PenTool, label: "記事作成" },
   { href: "/geo", icon: Bot, label: "GEO分析" },
   { href: "/audit", icon: Stethoscope, label: "サイト監査" },

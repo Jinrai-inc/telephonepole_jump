@@ -3,14 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Search, PenTool, Bot, Settings } from "lucide-react";
+import { BarChart3, Search, TrendingUp, PenTool, Bot, Settings } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: BarChart3, label: "概要" },
   { href: "/keywords", icon: Search, label: "KW" },
+  { href: "/rankings", icon: TrendingUp, label: "順位" },
   { href: "/articles", icon: PenTool, label: "記事" },
   { href: "/geo", icon: Bot, label: "GEO" },
-  { href: "/settings", icon: Settings, label: "設定" },
 ];
 
 export function BottomNav() {
