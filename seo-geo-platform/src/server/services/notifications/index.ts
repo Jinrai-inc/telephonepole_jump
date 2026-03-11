@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification, formatRankChangeMessage, formatGeoChangeMessage } from "./slack";
 import { sendChatworkNotification, formatRankChangeChatwork } from "./chatwork";
+import { sendEmailNotification, formatRankChangeEmail, formatGeoChangeEmail, formatErrorEmail } from "./email";
 
 type NotificationChannel = "EMAIL" | "SLACK" | "CHATWORK";
 
@@ -37,13 +38,15 @@ export async function sendNotifications(
   });
 
   for (const setting of settings) {
-    if (!setting.webhookUrl) continue;
+    const channel = setting.channel as NotificationChannel;
+    // EMAILはwebhookUrl不要（メールアドレスで送信）
+    if (channel !== "EMAIL" && !setting.webhookUrl) continue;
 
     const shouldNotify = shouldSendNotification(setting, event);
     if (!shouldNotify) continue;
 
     try {
-      await dispatchNotification(setting.channel as NotificationChannel, setting.webhookUrl, event);
+      await dispatchNotification(channel, setting.webhookUrl ?? "", event);
     } catch (error) {
       console.error(`Notification failed for ${setting.channel}:`, error);
     }
@@ -81,8 +84,7 @@ async function dispatchNotification(
       await sendChatworkForEvent(webhookUrl, event);
       break;
     case "EMAIL":
-      // TODO: Implement email via Resend or similar
-      console.log("Email notification not yet implemented");
+      await sendEmailForEvent(webhookUrl, event);
       break;
   }
 }
@@ -103,6 +105,26 @@ async function sendSlackForEvent(webhookUrl: string, event: NotificationEvent) {
       await sendSlackNotification(webhookUrl, {
         text: `:warning: [${event.domain}] エラー: ${event.message}`,
       });
+      break;
+    }
+  }
+}
+
+async function sendEmailForEvent(toEmail: string, event: NotificationEvent) {
+  switch (event.type) {
+    case "rank_change": {
+      const email = formatRankChangeEmail(event.keyword, event.previousPosition, event.currentPosition, event.domain);
+      await sendEmailNotification({ ...email, to: toEmail });
+      break;
+    }
+    case "geo_change": {
+      const email = formatGeoChangeEmail(event.keyword, event.engine, event.isMentioned, event.domain);
+      await sendEmailNotification({ ...email, to: toEmail });
+      break;
+    }
+    case "error": {
+      const email = formatErrorEmail(event.message, event.domain);
+      await sendEmailNotification({ ...email, to: toEmail });
       break;
     }
   }

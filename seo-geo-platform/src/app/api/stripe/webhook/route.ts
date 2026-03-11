@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/lib/constants";
+import { sendNotifications } from "@/server/services/notifications";
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY || "", {
@@ -86,7 +87,21 @@ export async function POST(request: NextRequest) {
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
       console.error(`Payment failed for customer: ${invoice.customer}`);
-      // TODO: Send notification to org admin
+
+      // Find org by Stripe customer ID and send notification
+      const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.toString();
+      if (customerId) {
+        const org = await prisma.organization.findFirst({
+          where: { stripeCustomerId: customerId },
+        });
+        if (org) {
+          await sendNotifications(org.id, {
+            type: "error",
+            message: "決済に失敗しました。お支払い方法をご確認ください。",
+            domain: org.name,
+          });
+        }
+      }
       break;
     }
   }

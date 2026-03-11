@@ -25,7 +25,17 @@ export const reportsRouter = t.router({
       customCompanyName: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      return prisma.report.create({ data: input });
+      const report = await prisma.report.create({ data: input });
+
+      // Trigger PDF generation asynchronously
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      fetch(`${appUrl}/api/reports/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: report.id }),
+      }).catch((err) => console.error("PDF generation trigger failed:", err));
+
+      return report;
     }),
 
   getDownloadUrl: t.procedure
