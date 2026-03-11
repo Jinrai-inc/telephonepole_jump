@@ -283,19 +283,19 @@ function BillingSettings() {
           {[
             {
               name: "スターター",
-              price: "¥12,800",
+              price: "¥9,800",
               features: ["プロジェクト1件", "KW 100件", "GEOチェック 50回/月"],
               current: true,
             },
             {
               name: "ビジネス",
-              price: "¥29,800",
+              price: "¥39,800",
               features: ["プロジェクト5件", "KW 500件", "GEOチェック 200回/月", "ホワイトラベルレポート"],
               recommended: true,
             },
             {
               name: "エージェンシー",
-              price: "¥59,800",
+              price: "¥79,800",
               features: ["プロジェクト20件", "KW 2,000件", "GEOチェック 1,000回/月", "API アクセス", "専用サポート"],
             },
           ].map((plan) => (
