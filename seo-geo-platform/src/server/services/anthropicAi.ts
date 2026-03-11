@@ -1,4 +1,8 @@
-export async function callClaude(prompt: string, systemPrompt?: string): Promise<string> {
+export async function callClaude(
+  prompt: string,
+  systemPrompt?: string,
+  options?: { maxTokens?: number }
+): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return JSON.stringify({ error: "ANTHROPIC_API_KEY not configured", dummy: true });
@@ -12,9 +16,9 @@ export async function callClaude(prompt: string, systemPrompt?: string): Promise
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: systemPrompt || "あなたはSEO・GEOの専門家アシスタントです。",
+      model: "claude-opus-4-20250514",
+      max_tokens: options?.maxTokens ?? 4096,
+      system: systemPrompt || "あなたはSEO・GEOの専門家アシスタントです。日本語の記事制作、校正・校閲に精通しています。",
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -36,7 +40,7 @@ export async function generateArticleStructure(keyword: string) {
 
 export async function generateArticleContent(keyword: string, structure: string) {
   const prompt = `以下の構成案に基づいて、${keyword}についての記事本文を生成してください。SEO最適化された高品質な記事にしてください。\n\n構成案:\n${structure}`;
-  return callClaude(prompt);
+  return callClaude(prompt, undefined, { maxTokens: 16384 });
 }
 
 export async function proofreadArticle(text: string) {
