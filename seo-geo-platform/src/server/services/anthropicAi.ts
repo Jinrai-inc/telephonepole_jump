@@ -1,7 +1,10 @@
+const MODEL_OPUS = "claude-opus-4-20250514";
+const MODEL_SONNET = "claude-sonnet-4-20250514";
+
 export async function callClaude(
   prompt: string,
   systemPrompt?: string,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; model?: string }
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -16,7 +19,7 @@ export async function callClaude(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-20250514",
+      model: options?.model ?? MODEL_SONNET,
       max_tokens: options?.maxTokens ?? 4096,
       system: systemPrompt || "あなたはSEO・GEOの専門家アシスタントです。日本語の記事制作、校正・校閲に精通しています。",
       messages: [{ role: "user", content: prompt }],
@@ -28,29 +31,33 @@ export async function callClaude(
   return data.content?.[0]?.text ?? "";
 }
 
-export async function analyzeSearchIntent(keyword: string) {
-  const prompt = `${keyword}の検索意図を分析して、情報収集型/比較検討型/購入行動型に分類し、それぞれの代表的なクエリと推定検索ボリュームシェアをJSON形式で返してください。`;
-  return callClaude(prompt);
-}
+// --- 精度重視: Opus 4 ---
 
 export async function generateArticleStructure(keyword: string) {
   const prompt = `${keyword}で検索上位を狙う記事の見出し構成案をJSON（tag, text, ai_suggested のarray）で作成してください。推奨文字数も含めてください。`;
+  return callClaude(prompt, undefined, { model: MODEL_OPUS });
+}
+
+export async function proofreadArticle(text: string) {
+  const prompt = `以下の文章を校正してください。誤字脱字、文法エラー、表記ゆれ、句読点の問題を検出し、JSONで返してください。\n\n${text}`;
+  return callClaude(prompt, undefined, { model: MODEL_OPUS });
+}
+
+export async function factCheckArticle(text: string) {
+  const prompt = `以下の記事に含まれる事実、数値、引用を検証してください。各主張について、confirmed/needs_supplement/unverified のステータスをJSONで返してください。\n\n${text}`;
+  return callClaude(prompt, undefined, { model: MODEL_OPUS });
+}
+
+// --- コスト効率重視: Sonnet 4 ---
+
+export async function analyzeSearchIntent(keyword: string) {
+  const prompt = `${keyword}の検索意図を分析して、情報収集型/比較検討型/購入行動型に分類し、それぞれの代表的なクエリと推定検索ボリュームシェアをJSON形式で返してください。`;
   return callClaude(prompt);
 }
 
 export async function generateArticleContent(keyword: string, structure: string) {
   const prompt = `以下の構成案に基づいて、${keyword}についての記事本文を生成してください。SEO最適化された高品質な記事にしてください。\n\n構成案:\n${structure}`;
   return callClaude(prompt, undefined, { maxTokens: 16384 });
-}
-
-export async function proofreadArticle(text: string) {
-  const prompt = `以下の文章を校正してください。誤字脱字、文法エラー、表記ゆれ、句読点の問題を検出し、JSONで返してください。\n\n${text}`;
-  return callClaude(prompt);
-}
-
-export async function factCheckArticle(text: string) {
-  const prompt = `以下の記事に含まれる事実、数値、引用を検証してください。各主張について、confirmed/needs_supplement/unverified のステータスをJSONで返してください。\n\n${text}`;
-  return callClaude(prompt);
 }
 
 export async function checkAiDetection(text: string) {
