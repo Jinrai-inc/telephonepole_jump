@@ -283,7 +283,7 @@ function BillingSettings() {
           {[
             {
               name: "スターター",
-              price: "¥9,800",
+              price: "¥12,000",
               features: ["プロジェクト1件", "KW 100件", "GEOチェック 50回/月"],
               current: true,
             },
