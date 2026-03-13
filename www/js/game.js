@@ -137,7 +137,6 @@ class Game {
     this._bindInput();
     this.lastTime = null;
     AdMobManager.init();
-    GameCenterManager.init();
     requestAnimationFrame((t) => this._loop(t));
   }
 
@@ -426,16 +425,12 @@ class Game {
   }
 
   _openRanking() {
-    // Try Game Center native leaderboard first; fall back to in-game ranking
-    GameCenterManager.showLeaderboard().then(shown => {
-      if (shown) return;
-      this.state        = 'ranking';
-      this.rankEntries  = [];
-      this.rankLoading  = true;
-      ranking.fetchTop10((entries) => {
-        this.rankEntries = entries;
-        this.rankLoading = false;
-      });
+    this.state        = 'ranking';
+    this.rankEntries  = [];
+    this.rankLoading  = true;
+    ranking.fetchTop10((entries) => {
+      this.rankEntries = entries;
+      this.rankLoading = false;
     });
   }
 
@@ -615,7 +610,6 @@ class Game {
       charManager.addCumulative(this.heightM);
       this._checkUnlocks(prevCumulative);
       ranking.submitScore(this.heightM, this.score, charManager.selected);
-      GameCenterManager.submitScore(this.heightM);
     } else {
       // Stage mode: still earn cumulative height but no ranking
       charManager.addCumulative(this.heightM);
