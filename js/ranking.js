@@ -96,19 +96,28 @@ class RankingManager {
   // Fetch top-10, calls callback(entries) where entries = [{rank,nick,height,score,char}]
   fetchTop10(callback) {
     if (this._db) {
+      let done = false;
+      const finish = (entries) => {
+        if (done) return;
+        done = true;
+        callback(entries);
+      };
+      // Fallback to local data if Firebase doesn't respond within 5 seconds
+      const timer = setTimeout(() => finish(this._localTop10()), 5000);
       // Fetch more entries so dedup still yields a full top-10
       this._db.ref('scores')
         .orderByChild('height')
         .limitToLast(200)
         .once('value')
         .then(snap => {
+          clearTimeout(timer);
           const raw = [];
           snap.forEach(child => raw.push(child.val()));
           const entries = this._dedupByNick(raw).slice(0, 10);
           this._cache = entries.map((e, i) => ({ rank: i+1, ...e }));
-          callback(this._cache);
+          finish(this._cache);
         })
-        .catch(() => callback(this._localTop10()));
+        .catch(() => { clearTimeout(timer); finish(this._localTop10()); });
     } else {
       // Slight delay to feel async
       setTimeout(() => callback(this._localTop10()), 100);
