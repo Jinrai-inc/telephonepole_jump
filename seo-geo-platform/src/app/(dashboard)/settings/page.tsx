@@ -274,49 +274,78 @@ function NotificationSettings() {
 function BillingSettings() {
   const { orgId } = useProject();
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const cardElementRef = React.useRef<HTMLDivElement>(null);
+  const payjpRef = React.useRef<ReturnType<typeof window.Payjp> | null>(null);
+  const cardRef = React.useRef<unknown>(null);
 
-  const handleUpgrade = async (planKey: string) => {
-    if (!orgId) return;
-    setUpgrading(planKey);
-    try {
-      // Load PAY.JP Checkout and get token
-      const payjpKey = process.env.NEXT_PUBLIC_PAYJP_PUBLIC_KEY || "";
-      const script = document.createElement("script");
-      script.src = "https://checkout.pay.jp/";
-      script.dataset.key = payjpKey;
-      document.body.appendChild(script);
+  // Load payjp.js v2
+  React.useEffect(() => {
+    if (document.getElementById("payjp-script")) return;
+    const script = document.createElement("script");
+    script.id = "payjp-script";
+    script.src = "https://js.pay.jp/v2/pay.js";
+    document.head.appendChild(script);
+  }, []);
 
-      await new Promise<void>((resolve) => {
-        script.onload = () => resolve();
-      });
+  // Mount card element when modal opens
+  React.useEffect(() => {
+    if (!showCardModal || !cardElementRef.current) return;
+    const key = process.env.NEXT_PUBLIC_PAYJP_PUBLIC_KEY || "";
+    if (!window.Payjp) return;
 
-      const handler = (window as unknown as Record<string, unknown>).PayjpCheckout as {
-        open: (opts: Record<string, unknown>) => void;
-      } | undefined;
-
-      if (!handler) {
-        throw new Error("PAY.JP Checkout failed to load");
-      }
-
-      // PAY.JP Checkout will call token callback
-      handler.open({
-        "data-key": payjpKey,
-        "data-text": "カード情報を入力",
-        "data-partial": "true",
-        "data-on-created": async (response: { id: string }) => {
-          const res = await fetch("/api/payjp/checkout", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orgId, plan: planKey, token: response.id }),
-          });
-          const data = await res.json();
-          if (data.subscriptionId) {
-            window.location.href = "/settings?checkout=success";
-          }
+    const payjp = window.Payjp(key);
+    payjpRef.current = payjp;
+    const elements = payjp.elements();
+    const card = elements.create("card", {
+      style: {
+        base: {
+          color: "#F0F4F8",
+          fontSize: "16px",
+          "::placeholder": { color: "#5C6F82" },
         },
+        invalid: { color: "#FF5C5C" },
+      },
+    });
+    card.mount(cardElementRef.current);
+    cardRef.current = card;
+
+    return () => { card.unmount(); };
+  }, [showCardModal]);
+
+  const handleUpgrade = (planKey: string) => {
+    if (!orgId) return;
+    setSelectedPlan(planKey);
+    setError(null);
+    setShowCardModal(true);
+  };
+
+  const handleSubmitCard = async () => {
+    if (!orgId || !selectedPlan || !payjpRef.current || !cardRef.current) return;
+    setUpgrading(selectedPlan);
+    setError(null);
+    try {
+      const result = await payjpRef.current.createToken(cardRef.current as Parameters<typeof payjpRef.current.createToken>[0]);
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+      const res = await fetch("/api/payjp/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, plan: selectedPlan, token: result.id }),
       });
+      const data = await res.json();
+      if (data.subscriptionId) {
+        window.location.href = "/settings?checkout=success";
+      } else {
+        setError(data.error || "決済に失敗しました");
+      }
     } catch (err) {
       console.error("Checkout error:", err);
+      setError("決済処理中にエラーが発生しました");
     } finally {
       setUpgrading(null);
     }
@@ -392,6 +421,37 @@ function BillingSettings() {
           ))}
         </div>
       </Card>
+
+      {/* Card Input Modal */}
+      {showCardModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => !upgrading && setShowCardModal(false)}>
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-text mb-4">カード情報を入力</h3>
+            <div
+              ref={cardElementRef}
+              className="bg-bg border border-border rounded-lg p-4 mb-4 min-h-[44px]"
+            />
+            {error && <p className="text-warn text-sm mb-4">{error}</p>}
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                variant="outline"
+                disabled={!!upgrading}
+                onClick={() => setShowCardModal(false)}
+              >
+                キャンセル
+              </Button>
+              <Button
+                className="flex-1"
+                loading={!!upgrading}
+                onClick={handleSubmitCard}
+              >
+                決済する
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <h3 className="text-sm font-medium text-text-mid mb-4">請求情報</h3>
