@@ -272,6 +272,29 @@ function NotificationSettings() {
 }
 
 function BillingSettings() {
+  const { orgId } = useProject();
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+
+  const handleUpgrade = async (planKey: string) => {
+    if (!orgId) return;
+    setUpgrading(planKey);
+    try {
+      const res = await fetch("/api/square/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, plan: planKey }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -283,18 +306,21 @@ function BillingSettings() {
           {[
             {
               name: "スターター",
+              key: "STARTER",
               price: "¥12,000",
               features: ["プロジェクト1件", "KW 100件", "GEOチェック 50回/月"],
               current: true,
             },
             {
               name: "ビジネス",
+              key: "BUSINESS",
               price: "¥39,800",
               features: ["プロジェクト5件", "KW 500件", "GEOチェック 200回/月", "ホワイトラベルレポート"],
               recommended: true,
             },
             {
               name: "エージェンシー",
+              key: "AGENCY",
               price: "¥79,800",
               features: ["プロジェクト20件", "KW 2,000件", "GEOチェック 1,000回/月", "API アクセス", "専用サポート"],
             },
@@ -330,6 +356,8 @@ function BillingSettings() {
                 variant={plan.current ? "ghost" : "primary"}
                 size="sm"
                 disabled={plan.current}
+                loading={upgrading === plan.key}
+                onClick={() => !plan.current && handleUpgrade(plan.key)}
               >
                 {plan.current ? "現在のプラン" : "アップグレード"}
               </Button>
@@ -340,6 +368,7 @@ function BillingSettings() {
 
       <Card>
         <h3 className="text-sm font-medium text-text-mid mb-4">請求情報</h3>
+        <p className="text-xs text-text-dim mb-3">決済はSquareを通じて安全に処理されます。</p>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between py-2 border-b border-border/50">
             <span className="text-text-mid">支払い方法</span>

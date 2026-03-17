@@ -36,7 +36,7 @@ model Organization {
   maxProjects    Int      @default(1) @map("max_projects")
   maxKeywords    Int      @default(100) @map("max_keywords")
   maxGeoChecks   Int      @default(50) @map("max_geo_checks")
-  stripeCustomerId String? @map("stripe_customer_id")
+  squareCustomerId String? @map("square_customer_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   members       OrgMember[]
