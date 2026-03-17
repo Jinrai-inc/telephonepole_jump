@@ -279,15 +279,42 @@ function BillingSettings() {
     if (!orgId) return;
     setUpgrading(planKey);
     try {
-      const res = await fetch("/api/square/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId, plan: planKey }),
+      // Load PAY.JP Checkout and get token
+      const payjpKey = process.env.NEXT_PUBLIC_PAYJP_PUBLIC_KEY || "";
+      const script = document.createElement("script");
+      script.src = "https://checkout.pay.jp/";
+      script.dataset.key = payjpKey;
+      document.body.appendChild(script);
+
+      await new Promise<void>((resolve) => {
+        script.onload = () => resolve();
       });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+
+      const handler = (window as unknown as Record<string, unknown>).PayjpCheckout as {
+        open: (opts: Record<string, unknown>) => void;
+      } | undefined;
+
+      if (!handler) {
+        throw new Error("PAY.JP Checkout failed to load");
       }
+
+      // PAY.JP Checkout will call token callback
+      handler.open({
+        "data-key": payjpKey,
+        "data-text": "カード情報を入力",
+        "data-partial": "true",
+        "data-on-created": async (response: { id: string }) => {
+          const res = await fetch("/api/payjp/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orgId, plan: planKey, token: response.id }),
+          });
+          const data = await res.json();
+          if (data.subscriptionId) {
+            window.location.href = "/settings?checkout=success";
+          }
+        },
+      });
     } catch (err) {
       console.error("Checkout error:", err);
     } finally {
@@ -368,7 +395,7 @@ function BillingSettings() {
 
       <Card>
         <h3 className="text-sm font-medium text-text-mid mb-4">請求情報</h3>
-        <p className="text-xs text-text-dim mb-3">決済はSquareを通じて安全に処理されます。</p>
+        <p className="text-xs text-text-dim mb-3">決済はPAY.JPを通じて安全に処理されます。</p>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between py-2 border-b border-border/50">
             <span className="text-text-mid">支払い方法</span>
