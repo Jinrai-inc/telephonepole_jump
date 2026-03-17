@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { queryAllEngines, type EngineType } from "@/server/services/aiEngines";
 import { callClaude } from "@/server/services/anthropicAi";
 
 /**
  * POST /api/geo/check
  * Runs GEO monitoring for keywords in a project.
- * Queries each AI engine and checks for domain mentions.
+ * Queries each AI engine directly and checks for domain mentions.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +29,10 @@ export async function POST(request: NextRequest) {
     const results = [];
 
     for (const kw of project.keywords) {
-      const engineResults = await checkAllEngines(kw.keyword, project.domain);
+      const engineResponses = await queryAllEngines(kw.keyword);
+      const engineResults = await Promise.all(
+        engineResponses.map((resp) => analyzeResponse(resp.engine, resp.responseText, project.domain, resp.success))
+      );
 
       for (const er of engineResults) {
         await prisma.keywordGeoCheck.create({
@@ -67,6 +71,7 @@ export async function POST(request: NextRequest) {
           engine: r.engine,
           isMentioned: r.isMentioned,
           mentionType: r.mentionType,
+          success: r.success,
         })),
       });
     }
@@ -78,11 +83,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-type EngineType = "CHATGPT" | "GEMINI" | "PERPLEXITY" | "COPILOT" | "CLAUDE";
 type MentionType = "DIRECT" | "INDIRECT" | "NOT_MENTIONED";
 type SentimentType = "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "NONE";
 
-interface EngineResult {
+interface AnalyzedResult {
   engine: EngineType;
   isMentioned: boolean;
   mentionType: MentionType;
@@ -90,85 +94,87 @@ interface EngineResult {
   shareOfVoice: number;
   responseText: string;
   competitors: string[];
+  success: boolean;
 }
 
-async function checkAllEngines(keyword: string, domain: string): Promise<EngineResult[]> {
-  const engines: EngineType[] = ["CHATGPT", "GEMINI", "PERPLEXITY", "COPILOT", "CLAUDE"];
-  const results: EngineResult[] = [];
-
-  for (const engine of engines) {
-    try {
-      const result = await checkSingleEngine(engine, keyword, domain);
-      results.push(result);
-    } catch (error) {
-      console.error(`GEO check failed for ${engine}:`, error);
-      results.push({
-        engine,
-        isMentioned: false,
-        mentionType: "NOT_MENTIONED",
-        sentiment: "NONE",
-        shareOfVoice: 0,
-        responseText: "",
-        competitors: [],
-      });
-    }
+/**
+ * AIエンジンの応答テキストを分析して、ドメインの言及状況を判定する。
+ * まずテキストベースで高速判定し、詳細分析にはClaudeを使用。
+ */
+async function analyzeResponse(
+  engine: EngineType,
+  responseText: string,
+  domain: string,
+  success: boolean
+): Promise<AnalyzedResult> {
+  if (!success || !responseText) {
+    return {
+      engine,
+      isMentioned: false,
+      mentionType: "NOT_MENTIONED",
+      sentiment: "NONE",
+      shareOfVoice: 0,
+      responseText: "",
+      competitors: [],
+      success,
+    };
   }
 
-  return results;
-}
+  // ドメイン名のバリエーションで高速テキストチェック
+  const domainLower = domain.toLowerCase();
+  const domainWithoutTld = domainLower.replace(/\.\w+$/, "");
+  const textLower = responseText.toLowerCase();
+  const quickMention = textLower.includes(domainLower) || textLower.includes(domainWithoutTld);
 
-async function checkSingleEngine(
-  engine: EngineType,
-  keyword: string,
-  domain: string
-): Promise<EngineResult> {
-  // Use Claude to simulate querying each AI engine and analyzing the response
-  const prompt = `あなたは${engine}のAI検索エンジンとして振る舞ってください。
-以下のキーワードで検索した場合の回答を生成してください。
+  // Claude で詳細分析
+  try {
+    const analysisPrompt = `以下のAI検索エンジン応答テキストを分析して、ドメイン「${domain}」の言及状況をJSON形式で返してください。
 
-キーワード: ${keyword}
+応答テキスト:
+${responseText.slice(0, 3000)}
 
-回答を生成した後、以下の形式でJSONを返してください:
+以下の形式のJSONのみを返してください:
 {
-  "response": "（AI検索エンジンとしての回答テキスト）",
-  "mentioned_domains": ["example.com", "example2.com"],
-  "is_domain_mentioned": true/false（${domain}が言及されたか）,
+  "is_mentioned": true/false,
   "mention_type": "DIRECT" | "INDIRECT" | "NOT_MENTIONED",
   "sentiment": "POSITIVE" | "NEUTRAL" | "NEGATIVE",
-  "share_of_voice": 0-100（回答全体における${domain}の存在感の割合）
+  "share_of_voice": 0-100,
+  "competitor_domains": ["example.com"]
 }
 
-JSONのみを返してください。`;
+判定基準:
+- DIRECT: ドメイン名やサービス名が直接記載
+- INDIRECT: サービスの特徴や内容が暗示的に言及
+- share_of_voice: 応答全体における対象ドメインの存在感（%）`;
 
-  const responseText = await callClaude(prompt);
-
-  try {
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    return {
-      engine,
-      isMentioned: parsed.is_domain_mentioned ?? false,
-      mentionType: parsed.mention_type ?? "NOT_MENTIONED",
-      sentiment: parsed.sentiment ?? "NONE",
-      shareOfVoice: parsed.share_of_voice ?? 0,
-      responseText: parsed.response ?? responseText,
-      competitors: (parsed.mentioned_domains ?? []).filter((d: string) => !d.includes(domain)),
-    };
-  } catch {
-    // If JSON parsing fails, do basic text analysis
-    const mentioned = responseText.toLowerCase().includes(domain.toLowerCase());
-    return {
-      engine,
-      isMentioned: mentioned,
-      mentionType: mentioned ? "INDIRECT" : "NOT_MENTIONED",
-      sentiment: mentioned ? "NEUTRAL" : "NONE",
-      shareOfVoice: mentioned ? 10 : 0,
-      responseText,
-      competitors: [],
-    };
+    const analysisText = await callClaude(analysisPrompt);
+    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        engine,
+        isMentioned: parsed.is_mentioned ?? quickMention,
+        mentionType: parsed.mention_type ?? (quickMention ? "INDIRECT" : "NOT_MENTIONED"),
+        sentiment: parsed.sentiment ?? "NONE",
+        shareOfVoice: parsed.share_of_voice ?? 0,
+        responseText,
+        competitors: (parsed.competitor_domains ?? []).filter((d: string) => !d.includes(domain)),
+        success: true,
+      };
+    }
+  } catch (error) {
+    console.error(`[GEO] Analysis failed for ${engine}:`, error);
   }
+
+  // Claude分析失敗時はテキストベースのフォールバック
+  return {
+    engine,
+    isMentioned: quickMention,
+    mentionType: quickMention ? "INDIRECT" : "NOT_MENTIONED",
+    sentiment: quickMention ? "NEUTRAL" : "NONE",
+    shareOfVoice: quickMention ? 10 : 0,
+    responseText,
+    competitors: [],
+    success: true,
+  };
 }

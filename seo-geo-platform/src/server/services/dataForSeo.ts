@@ -13,7 +13,8 @@ function isConfigured(): boolean {
 
 async function apiRequest(endpoint: string, body: unknown) {
   if (!isConfigured()) {
-    return null; // Fallback to dummy data
+    console.warn(`[DataForSEO] DATAFORSEO_LOGIN/DATAFORSEO_PASSWORD が未設定のためダミーデータを返却します (endpoint: ${endpoint})`);
+    return null;
   }
 
   const res = await fetch(`${DATAFORSEO_BASE}${endpoint}`, {

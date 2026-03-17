@@ -39,8 +39,8 @@ export async function sendNotifications(
 
   for (const setting of settings) {
     const channel = setting.channel as NotificationChannel;
-    // EMAILはwebhookUrl不要（メールアドレスで送信）
-    if (channel !== "EMAIL" && !setting.webhookUrl) continue;
+    // 全チャネルで宛先が必要（EMAIL: メールアドレス、SLACK/CHATWORK: webhook URL）
+    if (!setting.webhookUrl) continue;
 
     const shouldNotify = shouldSendNotification(setting, event);
     if (!shouldNotify) continue;
