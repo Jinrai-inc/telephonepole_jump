@@ -7,6 +7,19 @@ import {
   type DemoUser,
 } from "@/lib/demo-auth";
 import { prisma } from "@/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  LOGIN_RATE_LIMIT,
+  SIGNUP_RATE_LIMIT,
+} from "@/lib/rate-limiter";
+import {
+  isAccountLocked,
+  recordFailedAttempt,
+  resetFailedAttempts,
+} from "@/lib/account-lock";
+import { verifyRecaptcha } from "@/lib/recaptcha";
+import { sendLoginNotification } from "@/server/services/notifications/login-notify";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -120,13 +133,50 @@ async function loadDbContext(user: DemoUser) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { action } = body;
+  const clientIp = getClientIp(req.headers);
 
   if (action === "login") {
-    const { email, password } = body;
+    const { email, password, recaptchaToken } = body;
+
+    // レートリミットチェック
+    const rateResult = checkRateLimit(`login:${clientIp}`, LOGIN_RATE_LIMIT);
+    if (!rateResult.allowed) {
+      return NextResponse.json(
+        { error: "リクエスト回数の上限に達しました。しばらくしてから再度お試しください。" },
+        { status: 429 }
+      );
+    }
+
+    // アカウントロックチェック
+    const lockStatus = isAccountLocked(email);
+    if (lockStatus.locked) {
+      return NextResponse.json(
+        { error: `アカウントがロックされています。${lockStatus.remainingMinutes}分後に再度お試しください。` },
+        { status: 423 }
+      );
+    }
+
+    // reCAPTCHA検証
+    const captchaResult = await verifyRecaptcha(recaptchaToken, "login");
+    if (!captchaResult.valid) {
+      return NextResponse.json(
+        { error: captchaResult.error || "reCAPTCHA検証に失敗しました" },
+        { status: 403 }
+      );
+    }
+
     const user = validateCredentials(email, password);
     if (!user) {
-      return NextResponse.json({ error: "メールアドレスまたはパスワードが正しくありません" }, { status: 401 });
+      // 失敗を記録
+      const lockResult = recordFailedAttempt(email);
+      const msg = lockResult.locked
+        ? "ログイン試行回数の上限に達しました。アカウントがロックされました。"
+        : `メールアドレスまたはパスワードが正しくありません（残り${lockResult.attemptsRemaining}回）`;
+      return NextResponse.json({ error: msg }, { status: 401 });
     }
+
+    // ログイン成功: 失敗カウントをリセット
+    resetFailedAttempts(email);
 
     // DBからorgId/projectIdを取得
     await loadDbContext(user);
@@ -134,11 +184,35 @@ export async function POST(req: NextRequest) {
     const token = createSessionToken(user);
     const res = NextResponse.json({ user });
     res.cookies.set(SESSION_COOKIE_NAME, token, COOKIE_OPTIONS);
+
+    // ログイン通知メール送信（非同期、エラーでもログインは続行）
+    sendLoginNotification(email, clientIp, req.headers.get("user-agent") || "unknown").catch(
+      (err) => console.error("[auth] Login notification failed:", err)
+    );
+
     return res;
   }
 
   if (action === "signup") {
-    const { email, companyName, lastName, firstName, phone, password } = body;
+    const { email, companyName, lastName, firstName, phone, password, recaptchaToken } = body;
+
+    // レートリミットチェック
+    const rateResult = checkRateLimit(`signup:${clientIp}`, SIGNUP_RATE_LIMIT);
+    if (!rateResult.allowed) {
+      return NextResponse.json(
+        { error: "登録回数の上限に達しました。しばらくしてから再度お試しください。" },
+        { status: 429 }
+      );
+    }
+
+    // reCAPTCHA検証
+    const captchaResult = await verifyRecaptcha(recaptchaToken, "signup");
+    if (!captchaResult.valid) {
+      return NextResponse.json(
+        { error: captchaResult.error || "reCAPTCHA検証に失敗しました" },
+        { status: 403 }
+      );
+    }
 
     // 既存アカウントチェック
     if (DEMO_ACCOUNTS[email]) {

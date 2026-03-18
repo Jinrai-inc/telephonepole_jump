@@ -1,7 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { PLANS } from "@/lib/constants";
 import { sendNotifications } from "@/server/services/notifications";
+
+/**
+ * PAY.JP Webhookシグネチャ検証
+ * PAY.JPはHTTPヘッダーにシグネチャを含めて送信する
+ */
+function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  const webhookSecret = process.env.PAYJP_WEBHOOK_SECRET;
+
+  // シークレット未設定時は検証スキップ（開発環境用）
+  if (!webhookSecret) {
+    console.warn("[webhook] PAYJP_WEBHOOK_SECRET not configured, skipping signature verification");
+    return true;
+  }
+
+  if (!signature) {
+    console.error("[webhook] Missing signature header");
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody, "utf-8")
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
 
 /**
  * POST /api/payjp/webhook
@@ -14,7 +44,18 @@ import { sendNotifications } from "@/server/services/notifications";
  */
 export async function POST(request: NextRequest) {
   try {
-    const event = await request.json();
+    // シグネチャ検証
+    const rawBody = await request.text();
+    const signature = request.headers.get("x-payjp-webhook-token");
+
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      return NextResponse.json(
+        { error: "Invalid webhook signature" },
+        { status: 401 }
+      );
+    }
+
+    const event = JSON.parse(rawBody);
     const eventType: string = event.type;
 
     switch (eventType) {

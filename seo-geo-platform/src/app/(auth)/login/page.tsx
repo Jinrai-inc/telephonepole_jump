@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { executeRecaptcha } = useRecaptcha();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +18,11 @@ export default function LoginPage() {
     setError("");
 
     try {
+      const recaptchaToken = await executeRecaptcha("login");
       const res = await fetch("/api/auth/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "login", email, password }),
+        body: JSON.stringify({ action: "login", email, password, recaptchaToken }),
       });
 
       const data = await res.json();

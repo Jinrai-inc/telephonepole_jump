@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Payjp from "payjp";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp, CHECKOUT_RATE_LIMIT } from "@/lib/rate-limiter";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 function getPayjp() {
   return Payjp(process.env.PAYJP_SECRET_KEY!);
@@ -23,7 +25,26 @@ const ALLOWED_TDS_STATUSES = new Set(["verified", "attempted"]);
  */
 export async function POST(request: NextRequest) {
   try {
-    const { orgId, plan, token } = await request.json();
+    // レートリミットチェック
+    const clientIp = getClientIp(request.headers);
+    const rateResult = checkRateLimit(`checkout:${clientIp}`, CHECKOUT_RATE_LIMIT);
+    if (!rateResult.allowed) {
+      return NextResponse.json(
+        { error: "リクエスト回数の上限に達しました。しばらくしてから再度お試しください。" },
+        { status: 429 }
+      );
+    }
+
+    const { orgId, plan, token, recaptchaToken } = await request.json();
+
+    // reCAPTCHA検証（クレジットマスター対策）
+    const captchaResult = await verifyRecaptcha(recaptchaToken, "checkout");
+    if (!captchaResult.valid) {
+      return NextResponse.json(
+        { error: captchaResult.error || "reCAPTCHA検証に失敗しました" },
+        { status: 403 }
+      );
+    }
 
     if (!orgId || !plan || !token) {
       return NextResponse.json(

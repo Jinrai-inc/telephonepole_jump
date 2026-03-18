@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 export default function SignupPage() {
   const [companyName, setCompanyName] = useState("");
@@ -13,6 +14,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { executeRecaptcha } = useRecaptcha();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +22,7 @@ export default function SignupPage() {
     setError("");
 
     try {
+      const recaptchaToken = await executeRecaptcha("signup");
       const res = await fetch("/api/auth/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,6 +34,7 @@ export default function SignupPage() {
           phone,
           email,
           password,
+          recaptchaToken,
         }),
       });
 
