@@ -277,6 +277,8 @@ function BillingSettings() {
   const [showCardModal, setShowCardModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cardholderName, setCardholderName] = useState("");
+  const [cardholderEmail, setCardholderEmail] = useState("");
   const cardElementRef = React.useRef<HTMLDivElement>(null);
   const payjpRef = React.useRef<ReturnType<typeof window.Payjp> | null>(null);
   const cardRef = React.useRef<unknown>(null);
@@ -319,15 +321,35 @@ function BillingSettings() {
     if (!orgId) return;
     setSelectedPlan(planKey);
     setError(null);
+    setCardholderName("");
+    setCardholderEmail("");
     setShowCardModal(true);
   };
 
   const handleSubmitCard = async () => {
     if (!orgId || !selectedPlan || !payjpRef.current || !cardRef.current) return;
+    if (!cardholderName.trim()) {
+      setError("カード名義を入力してください");
+      return;
+    }
+    if (!cardholderEmail.trim()) {
+      setError("メールアドレスを入力してください");
+      return;
+    }
     setUpgrading(selectedPlan);
     setError(null);
     try {
-      const result = await payjpRef.current.createToken(cardRef.current as Parameters<typeof payjpRef.current.createToken>[0]);
+      // 3Dセキュア認証付きトークン作成
+      const result = await payjpRef.current.createToken(
+        cardRef.current as Parameters<typeof payjpRef.current.createToken>[0],
+        {
+          three_d_secure: true,
+          card: {
+            name: cardholderName.trim(),
+            email: cardholderEmail.trim(),
+          },
+        }
+      );
       if (result.error) {
         setError(result.error.message);
         return;
@@ -427,10 +449,41 @@ function BillingSettings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => !upgrading && setShowCardModal(false)}>
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-text mb-4">カード情報を入力</h3>
-            <div
-              ref={cardElementRef}
-              className="bg-bg border border-border rounded-lg p-4 mb-4 min-h-[44px]"
-            />
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm text-text-mid mb-1">カード名義（半角英字）</label>
+                <input
+                  type="text"
+                  value={cardholderName}
+                  onChange={(e) => setCardholderName(e.target.value)}
+                  placeholder="TARO YAMADA"
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-accent/50"
+                  autoComplete="cc-name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-text-mid mb-1">メールアドレス</label>
+                <input
+                  type="email"
+                  value={cardholderEmail}
+                  onChange={(e) => setCardholderEmail(e.target.value)}
+                  placeholder="example@email.com"
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-accent/50"
+                  autoComplete="email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-text-mid mb-1">カード情報</label>
+                <div
+                  ref={cardElementRef}
+                  className="bg-bg border border-border rounded-lg p-4 min-h-[44px]"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-text-dim mb-3 flex items-center gap-1">
+              <Shield size={12} />
+              3Dセキュア認証により安全に決済されます
+            </p>
             {error && <p className="text-warn text-sm mb-4">{error}</p>}
             <div className="flex gap-3">
               <Button

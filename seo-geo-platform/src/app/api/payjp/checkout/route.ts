@@ -14,10 +14,12 @@ function getPlanMap(): Record<string, string> {
   };
 }
 
+const ALLOWED_TDS_STATUSES = new Set(["verified", "attempted"]);
+
 /**
  * POST /api/payjp/checkout
  * Creates a PAY.JP customer + subscription for plan.
- * Expects { orgId, plan, token } where token is from PAY.JP Checkout.
+ * Expects { orgId, plan, token } where token is from PAY.JP with 3D Secure.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -45,10 +47,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const payjp = getPayjp();
+
+    // 3Dセキュア検証: トークンを取得してステータスを確認
+    const tokenObj = await payjp.tokens.retrieve(token);
+    const tdsStatus = tokenObj.card?.three_d_secure_status;
+
+    if (!tdsStatus || !ALLOWED_TDS_STATUSES.has(tdsStatus)) {
+      return NextResponse.json(
+        { error: `3Dセキュア認証が完了していません (status: ${tdsStatus ?? "null"})` },
+        { status: 400 }
+      );
+    }
+
+    // 3Dセキュア完了処理
+    await payjp.tokens.tds_finish(token);
+
     // Create or retrieve PAY.JP customer
     let customerId = org.payjpCustomerId;
     if (!customerId) {
-      const customer = await getPayjp().customers.create({
+      const customer = await payjp.customers.create({
         card: token,
         metadata: { orgId },
       });
@@ -59,13 +77,13 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Update card for existing customer
-      await getPayjp().customers.update(customerId, {
+      await payjp.customers.update(customerId, {
         card: token,
       });
     }
 
     // Create subscription
-    const subscription = await getPayjp().subscriptions.create({
+    const subscription = await payjp.subscriptions.create({
       customer: customerId,
       plan: planId,
       metadata: { orgId, plan },
@@ -77,8 +95,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("PAY.JP checkout error:", error);
+    const message = error instanceof Error ? error.message : "Failed to create subscription";
     return NextResponse.json(
-      { error: "Failed to create subscription" },
+      { error: message },
       { status: 500 }
     );
   }
