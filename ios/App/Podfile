@@ -14,6 +14,16 @@ end
 
 target 'App' do
   capacitor_pods
+
+  # AppLovin MAX SDK
+  pod 'AppLovinSDK'
+
+  # Mediation adapters
+  pod 'GoogleMobileAdsMediationAppLovin'   # AppLovin self-serve
+  pod 'GoogleMobileAds'                    # AdMob adapter (fill rate backup)
+  pod 'MintegralAdSDK'                     # Mintegral (JP/Asia high eCPM)
+  pod 'UnityAds'                           # Unity Ads (game ad inventory)
+  pod 'GoogleMobileAdsMediationUnity'      # Unity Ads adapter for MAX
 end
 
 post_install do |installer|

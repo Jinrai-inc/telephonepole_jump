@@ -49,13 +49,33 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- AppLovin MAX SDK key — replace with your real SDK key from AppLovin dashboard -->
+	<key>AppLovinSdkKey</key>
+	<string>YOUR_APPLOVIN_SDK_KEY</string>
+	<!-- AdMob App ID required by Google Mobile Ads SDK (used as mediation partner) -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-2054790971615092~2884816342</string>
 	<key>SKAdNetworkItems</key>
 	<array>
+		<!-- AppLovin -->
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>ludvb6cn84.skadnetwork</string>
+		</dict>
+		<!-- Google AdMob -->
 		<dict>
 			<key>SKAdNetworkIdentifier</key>
 			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+		<!-- Mintegral -->
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>kbd757ywx3.skadnetwork</string>
+		</dict>
+		<!-- Unity Ads -->
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>4dzt52r2t5.skadnetwork</string>
 		</dict>
 	</array>
 </dict>

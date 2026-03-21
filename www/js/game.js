@@ -136,7 +136,7 @@ class Game {
 
     this._bindInput();
     this.lastTime = null;
-    AdMobManager.init();
+    AdService.init();
     requestAnimationFrame((t) => this._loop(t));
   }
 
@@ -303,16 +303,23 @@ class Game {
     }
 
     if (this.state === 'gameover') {
+      if (this.ui.rewardBtnRect && hit(this.ui.rewardBtnRect) && !this.scoreRewardUsed) {
+        sound.menuSelect();
+        this.scoreRewardUsed = true;
+        AdService.showRewardedAd(() => {
+          this.score = this.score * 2;
+        });
+        return;
+      }
       if (hit(this.ui.retryBtnRect)) {
         sound.menuSelect();
+        AdService.hideBanner();
         if (this.gameMode === 'stage') this._startStageGame(this.currentStage);
         else this._startEndless();
         return;
       }
-      if (hit(this.ui.titleBtnRect))   { sound.menuSelect(); this.state = 'title'; return; }
-      if (hit(this.ui.rankingBtnRect)) { sound.menuSelect(); this._openRanking(); return; }
-      if (this.gameMode === 'stage') this._startStageGame(this.currentStage);
-      else this._startEndless();
+      if (hit(this.ui.titleBtnRect))   { sound.menuSelect(); AdService.hideBanner(); this.state = 'title'; return; }
+      if (hit(this.ui.rankingBtnRect)) { sound.menuSelect(); AdService.hideBanner(); this._openRanking(); return; }
       return;
     }
 
@@ -449,6 +456,7 @@ class Game {
     this.notifications   = [];
     this.unlockToast     = null;
     this.stageCleared    = false;
+    this.scoreRewardUsed = false;
 
     this.obstacles.reset();
     this._generateBolts(BOLT_POOL);
@@ -692,7 +700,8 @@ class Game {
       this.deathTimer -= dt;
       if (this.deathTimer <= 0) {
         this.state = 'gameover';
-        AdMobManager.showOnGameOver(this.heightM);
+        AdService.showInterstitialOnGameOver();
+        AdService.showBanner();
       }
     }
   }
@@ -754,7 +763,7 @@ class Game {
     if (this.state === 'paused') this.ui.drawPause();
     if (this.state === 'gameover') {
       this.ui.drawGameOver(this.heightM, this.score, this.highScore,
-                           this.isNewRecord, this.animTick);
+                           this.isNewRecord, this.animTick, this.scoreRewardUsed);
     }
   }
 
