@@ -64,7 +64,9 @@ class RankingManager {
 
     // Submit to Firebase if available
     if (this._db) {
-      this._db.ref('scores').push(entry).catch(() => {});
+      this._db.ref('scores').push(entry)
+        .then(() => console.log('Score submitted to Firebase'))
+        .catch(err => console.error('Firebase write error:', err));
     }
   }
 
@@ -93,17 +95,25 @@ class RankingManager {
     return Array.from(best.values()).sort((a, b) => b.height - a.height);
   }
 
+  // Whether the last fetchTop10 succeeded online (set after each call)
+  get isOnline() { return this._isOnline; }
+
   // Fetch top-10, calls callback(entries) where entries = [{rank,nick,height,score,char}]
   fetchTop10(callback) {
+    this._isOnline = false;
     if (this._db) {
       let done = false;
-      const finish = (entries) => {
+      const finish = (entries, online) => {
         if (done) return;
         done = true;
+        this._isOnline = !!online;
         callback(entries);
       };
       // Fallback to local data if Firebase doesn't respond within 5 seconds
-      const timer = setTimeout(() => finish(this._localTop10()), 5000);
+      const timer = setTimeout(() => {
+        console.warn('Firebase timeout — falling back to local ranking');
+        finish(this._localTop10(), false);
+      }, 5000);
       // Fetch more entries so dedup still yields a full top-10
       this._db.ref('scores')
         .orderByChild('height')
@@ -115,11 +125,16 @@ class RankingManager {
           snap.forEach(child => raw.push(child.val()));
           const entries = this._dedupByNick(raw).slice(0, 10);
           this._cache = entries.map((e, i) => ({ rank: i+1, ...e }));
-          finish(this._cache);
+          finish(this._cache, true);
         })
-        .catch(() => { clearTimeout(timer); finish(this._localTop10()); });
+        .catch(err => {
+          clearTimeout(timer);
+          console.error('Firebase fetch error:', err);
+          finish(this._localTop10(), false);
+        });
     } else {
-      // Slight delay to feel async
+      // Firebase SDK not loaded
+      console.warn('Firebase not available — using local ranking');
       setTimeout(() => callback(this._localTop10()), 100);
     }
   }
