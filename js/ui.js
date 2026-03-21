@@ -630,14 +630,14 @@ class UI {
   }
 
   // ---- Game Over ----
-  drawGameOver(height, score, highScore, isNewRecord, animTick, rewardUsed) {
+  drawGameOver(height, score, highScore, isNewRecord, animTick) {
     const ctx = this.ctx;
     const W = this.W, H = this.H;
 
     ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(0, 0, W, H);
 
     const panelX = W*0.07, panelW = W*0.86;
-    const panelY = H*0.18, panelH = H*0.62;
+    const panelY = H*0.20, panelH = H*0.58;
     this._panel(panelX, panelY, panelW, panelH, '#ff4400');
 
     ctx.save();
@@ -668,23 +668,10 @@ class UI {
 
     ctx.restore();
 
-    const btnY = panelY + panelH - 122;
-
-    // Rewarded ad button — hidden once used
-    if (!rewardUsed) {
-      this.rewardBtnRect = this._btn('▶  動画でスコア2倍', panelX+10, btnY, panelW-20, 26, '#44bbff', '#000', 11);
-    } else {
-      this.rewardBtnRect = null;
-      ctx.save();
-      ctx.textAlign = 'center';
-      ctx.font = '10px "Courier New"'; ctx.fillStyle = '#44ffaa';
-      ctx.fillText('★ スコア2倍 適用済み', W/2, btnY+13);
-      ctx.restore();
-    }
-
-    this.retryBtnRect   = this._btn('▶  もういちど', panelX+10, btnY+34,  panelW-20, 30, '#ffcc00', '#000', 13);
-    this.titleBtnRect   = this._outlineBtn('タイトルへ',  panelX+10, btnY+72, Math.floor((panelW-24)/2), 24, '#aaa', 10);
-    this.rankingBtnRect = this._outlineBtn('ランキング',  panelX+10+Math.floor((panelW-24)/2)+4, btnY+72, Math.ceil((panelW-24)/2), 24, '#ffdd88', 10);
+    const btnY = panelY + panelH - 92;
+    this.retryBtnRect  = this._btn('▶  もういちど', panelX+10, btnY,    panelW-20, 30, '#ffcc00', '#000', 13);
+    this.titleBtnRect  = this._outlineBtn('タイトルへ',  panelX+10, btnY+38, Math.floor((panelW-24)/2), 24, '#aaa', 10);
+    this.rankingBtnRect = this._outlineBtn('ランキング',  panelX+10+Math.floor((panelW-24)/2)+4, btnY+38, Math.ceil((panelW-24)/2), 24, '#ffdd88', 10);
   }
 
   // ---- Stage Select Screen ----
