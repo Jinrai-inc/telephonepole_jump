@@ -583,14 +583,20 @@ class UI {
       });
     }
 
-    // My rank footer
+    // Online/local indicator + my rank footer
+    ctx.save();
+    ctx.font = '10px "Courier New"'; ctx.textAlign = 'center';
     if (myHeight > 0) {
       const myRank = ranking.myRank(myHeight);
-      ctx.save();
-      ctx.font = '10px "Courier New"'; ctx.fillStyle = '#aaaaaa'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#aaaaaa';
       ctx.fillText(`あなたの記録: ${myHeight}m  (ローカル${myRank}位)`, W/2, H-14);
-      ctx.restore();
     }
+    // Show online/offline status
+    const online = ranking.isOnline;
+    ctx.fillStyle = online ? '#44cc88' : '#cc4444';
+    ctx.textAlign = 'right';
+    ctx.fillText(online ? '● オンライン' : '● オフライン（ローカル表示）', W-10, H-14);
+    ctx.restore();
   }
 
   // ---- Nickname Input Screen ----
