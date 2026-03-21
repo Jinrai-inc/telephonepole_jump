@@ -11,8 +11,10 @@
       "backgroundColor": "#87CEEB",
       "showSpinner": false
     },
-    "CordovaPlugins": {
-      "AppLovinSDK": {}
+    "AdMob": {
+      "appIdAndroid": "",
+      "appIdIos": "ca-app-pub-2054790971615092~2884816342",
+      "initializeForTesting": false
     }
   }
 }

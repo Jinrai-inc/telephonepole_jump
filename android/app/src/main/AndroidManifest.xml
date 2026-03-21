@@ -33,17 +33,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
-
-        <!-- AppLovin MAX SDK key — replace with your real SDK key from AppLovin dashboard -->
-        <meta-data
-            android:name="applovin.sdk.key"
-            android:value="YOUR_APPLOVIN_SDK_KEY" />
-
-        <!-- AdMob App ID required by Google Mobile Ads SDK (mediation partner) -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="YOUR_ADMOB_APP_ID_ANDROID" />
-
     </application>
 
     <!-- Permissions -->
