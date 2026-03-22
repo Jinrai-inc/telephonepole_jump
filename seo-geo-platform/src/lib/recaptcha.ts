@@ -74,7 +74,11 @@ export async function verifyRecaptcha(
     return { valid: true, score };
   } catch (error) {
     console.error("[recaptcha] Verification error:", error);
-    // 外部サービス障害時はブロックしない
+    // 本番環境ではセキュリティ優先でブロック
+    if (process.env.NODE_ENV === "production") {
+      return { valid: false, score: 0, error: "セキュリティ検証サービスに接続できません" };
+    }
+    // 開発環境のみ許可
     return { valid: true, score: 0.5 };
   }
 }

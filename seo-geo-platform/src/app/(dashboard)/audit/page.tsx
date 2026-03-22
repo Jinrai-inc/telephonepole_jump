@@ -28,6 +28,9 @@ export default function AuditPage() {
   const resolveMutation = trpc.audit.resolveIssue.useMutation({
     onSuccess: () => auditQuery.refetch(),
   });
+  const crawlMutation = trpc.audit.startCrawl.useMutation({
+    onSuccess: () => auditQuery.refetch(),
+  });
 
   const audit = auditQuery.data;
   const allIssues = audit?.issues ?? [];
@@ -45,7 +48,11 @@ export default function AuditPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">サイト監査</h1>
-        <Button disabled>
+        <Button
+          onClick={() => projectId && crawlMutation.mutate({ projectId })}
+          loading={crawlMutation.isLoading}
+          disabled={!projectId}
+        >
           <RefreshCw size={16} className="mr-1.5" />
           再クロール
         </Button>

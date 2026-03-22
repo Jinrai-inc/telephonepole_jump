@@ -82,7 +82,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 3Dセキュア完了処理
-    await payjp.tokens.tds_finish(token);
+    try {
+      await payjp.tokens.tds_finish(token);
+    } catch (tdsError) {
+      console.error("3D Secure finish failed:", tdsError);
+      return NextResponse.json(
+        { error: "3Dセキュア確認処理に失敗しました。再度お試しください。" },
+        { status: 400 }
+      );
+    }
 
     // Create or retrieve PAY.JP customer
     let customerId = org.payjpCustomerId;

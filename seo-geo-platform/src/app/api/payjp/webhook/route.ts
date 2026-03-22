@@ -11,9 +11,13 @@ import { sendNotifications } from "@/server/services/notifications";
 function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
   const webhookSecret = process.env.PAYJP_WEBHOOK_SECRET;
 
-  // シークレット未設定時は検証スキップ（開発環境用）
+  // シークレット未設定時は本番環境では拒否
   if (!webhookSecret) {
-    console.warn("[webhook] PAYJP_WEBHOOK_SECRET not configured, skipping signature verification");
+    if (process.env.NODE_ENV === "production") {
+      console.error("[webhook] PAYJP_WEBHOOK_SECRET not configured in production");
+      return false;
+    }
+    console.warn("[webhook] PAYJP_WEBHOOK_SECRET not configured, skipping verification (dev only)");
     return true;
   }
 
@@ -27,10 +31,14 @@ function verifyWebhookSignature(rawBody: string, signature: string | null): bool
     .update(rawBody, "utf-8")
     .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  try {
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(sigBuf, expectedBuf);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -69,16 +77,27 @@ export async function POST(request: NextRequest) {
         if (customerId && metadata?.orgId && metadata?.plan) {
           const plan = metadata.plan as keyof typeof PLANS;
           if (plan in PLANS) {
-            const planConfig = PLANS[plan];
-            await prisma.organization.update({
+            // orgIdの存在確認
+            const org = await prisma.organization.findUnique({
               where: { id: metadata.orgId },
-              data: {
-                plan,
-                maxProjects: planConfig.maxProjects,
-                maxKeywords: planConfig.maxKeywords,
-                maxGeoChecks: planConfig.maxGeoChecks,
-              },
             });
+            if (org) {
+              const planConfig = PLANS[plan];
+              await prisma.organization.update({
+                where: { id: metadata.orgId },
+                data: {
+                  plan,
+                  payjpCustomerId: customerId,
+                  maxProjects: planConfig.maxProjects,
+                  maxKeywords: planConfig.maxKeywords,
+                  maxGeoChecks: planConfig.maxGeoChecks,
+                },
+              });
+            } else {
+              console.error(`[webhook] Organization not found: ${metadata.orgId}`);
+            }
+          } else {
+            console.error(`[webhook] Invalid plan: ${metadata.plan}`);
           }
         }
         break;

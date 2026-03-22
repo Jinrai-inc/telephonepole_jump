@@ -48,4 +48,26 @@ export const auditRouter = t.router({
         data: { isResolved: true },
       });
     }),
+
+  startCrawl: t.procedure
+    .input(z.object({ projectId: z.string() }))
+    .mutation(async ({ input }) => {
+      const project = await prisma.project.findUnique({
+        where: { id: input.projectId },
+      });
+      if (!project) throw new Error("Project not found");
+
+      // 新規監査レコードを作成（クロール中ステータス）
+      const audit = await prisma.siteAudit.create({
+        data: {
+          projectId: input.projectId,
+          healthScore: 0,
+          pagesCrawled: 0,
+          mobileScore: 0,
+          desktopScore: 0,
+        },
+      });
+
+      return { auditId: audit.id, status: "crawling" };
+    }),
 });

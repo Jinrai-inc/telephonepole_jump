@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Plus, PenTool, FileText, CheckCircle, Clock, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useProject } from "@/components/providers/ProjectProvider";
 
@@ -17,6 +18,7 @@ const statusConfig: Record<string, { label: string; color: "accent" | "blue" | "
 };
 
 export default function ArticlesPage() {
+  const router = useRouter();
   const { projectId } = useProject();
   const [filter, setFilter] = useState<string>("ALL");
 
@@ -50,11 +52,7 @@ export default function ArticlesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">記事作成</h1>
-        <Button onClick={() => {
-          if (!projectId) return;
-          const title = prompt("記事タイトルを入力してください");
-          if (title) createMutation.mutate({ projectId, title });
-        }}>
+        <Button onClick={() => router.push("/articles/new")}>
           <Plus size={16} className="mr-1.5" />
           新規記事
         </Button>
@@ -89,7 +87,7 @@ export default function ArticlesPage() {
         {filtered.map((article) => {
           const sc = statusConfig[article.status] || statusConfig.DRAFT;
           return (
-            <Card key={article.id} hover className="cursor-pointer">
+            <Card key={article.id} hover className="cursor-pointer" onClick={() => router.push(`/articles/${article.id}`)}>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">

@@ -28,7 +28,7 @@ export async function getTrafficOverview(
   return res.json();
 }
 
-export async function getTopPages(accessToken: string, propertyId: string) {
+export async function getTopPages(accessToken: string, propertyId: string, startDate = "30daysAgo", endDate = "today") {
   const res = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
@@ -38,7 +38,7 @@ export async function getTopPages(accessToken: string, propertyId: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+        dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: "pagePath" }],
         metrics: [{ name: "screenPageViews" }],
         orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
@@ -51,7 +51,7 @@ export async function getTopPages(accessToken: string, propertyId: string) {
   return res.json();
 }
 
-export async function getTrafficSources(accessToken: string, propertyId: string) {
+export async function getTrafficSources(accessToken: string, propertyId: string, startDate = "30daysAgo", endDate = "today") {
   const res = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
@@ -61,7 +61,7 @@ export async function getTrafficSources(accessToken: string, propertyId: string)
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+        dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: "sessionDefaultChannelGroup" }],
         metrics: [{ name: "sessions" }],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],

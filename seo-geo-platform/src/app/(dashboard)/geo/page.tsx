@@ -40,11 +40,24 @@ export default function GeoPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">GEOモニタリング</h1>
         <Button
-          onClick={() => {
+          onClick={async () => {
+            if (!projectId) return;
             setIsChecking(true);
-            setTimeout(() => setIsChecking(false), 2000);
+            try {
+              await fetch("/api/geo/check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ projectId }),
+              });
+              await geoQuery.refetch();
+            } catch (err) {
+              console.error("GEO check failed:", err);
+            } finally {
+              setIsChecking(false);
+            }
           }}
           loading={isChecking}
+          disabled={!projectId}
         >
           <RefreshCw size={16} className="mr-1.5" />
           再チェック

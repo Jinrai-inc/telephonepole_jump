@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
   async function fetchData(token: string) {
     const [overview, topPages, sources] = await Promise.all([
       getTrafficOverview(token, project!.ga4PropertyId!, startDate, endDate),
-      getTopPages(token, project!.ga4PropertyId!),
-      getTrafficSources(token, project!.ga4PropertyId!),
+      getTopPages(token, project!.ga4PropertyId!, startDate, endDate),
+      getTrafficSources(token, project!.ga4PropertyId!, startDate, endDate),
     ]);
     return { overview, topPages, sources };
   }
